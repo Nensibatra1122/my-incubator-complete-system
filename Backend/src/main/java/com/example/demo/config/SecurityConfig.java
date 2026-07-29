@@ -43,8 +43,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public Endpoints (Authentication & Public Feeds)
+                        // Public Endpoints (Authentication - Both POST & GET allowed for testing flexibility)
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // Public GET Feeds
                         .requestMatchers(HttpMethod.GET, "/api/mentors/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/timelines/**").permitAll()
@@ -53,19 +55,19 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/likes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tags/**").permitAll()
 
-                        // General context paths matching without /api prefix if accessed directly
+                        // General context paths matching
                         .requestMatchers("/incubations/**", "/progress/**", "/analytics/**").permitAll()
 
-                        // Incubations / Startups Endpoints (Updated to allow USER role properly)
+                        // Incubations / Startups Endpoints
                         .requestMatchers(HttpMethod.GET, "/api/incubations/**").hasAnyRole("ADMIN", "MENTOR", "STUDENT", "USER", "INVESTOR")
                         .requestMatchers(HttpMethod.POST, "/api/incubations/**").hasAnyRole("ADMIN", "MENTOR")
                         .requestMatchers(HttpMethod.PUT, "/api/incubations/**").hasAnyRole("ADMIN", "MENTOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/incubations/**").hasRole("ADMIN")
 
-                        // Progress Endpoints (Allowing authenticated roles to view/manage progress)
+                        // Progress Endpoints
                         .requestMatchers("/api/progress/**").hasAnyRole("ADMIN", "MENTOR", "STUDENT", "USER", "INVESTOR")
 
-                        // System Audit & Operation Logs -> Strictly Admin Only
+                        // System Audit & Operation Logs -> Admin Only
                         .requestMatchers("/api/logs/**").hasRole("ADMIN")
 
                         // Incubator Analytics -> Admin Only

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8080/api', // Saare endpoints isi base ke peeche lagenge
+    baseURL: 'http://98.94.6.13:8080/api', // Live AWS backend URL
 });
 
 // Interceptor: JWT token ko automatically har request mein daalne ke liye
