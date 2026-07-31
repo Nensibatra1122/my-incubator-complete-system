@@ -1,4 +1,4 @@
-import api from '../api/axios'; // Aapka existing axios instance import ho raha hai
+import api from '../api/axios'; // Centralized axios instance
 
 /**
  * Startup progress create karne ke liye
@@ -6,8 +6,6 @@ import api from '../api/axios'; // Aapka existing axios instance import ho raha 
  */
 export const saveProgress = async (data) => {
     try {
-        // Axios instance ka use ho raha hai, toh base URL '/api' include hai
-        // URL banega: http://localhost:8080/api/progress
         const response = await api.post('/progress', {
             currentPhase: data.currentPhase,
             percentage: data.percentage,
@@ -18,23 +16,26 @@ export const saveProgress = async (data) => {
         return response.data;
     } catch (error) {
         console.error("Creation failed:", error.response?.data || error.message);
-        throw error; // Component mein error dikhane ke liye throw zaroori hai
+        throw error;
     }
 };
 
 /**
- * Startup ID ke zariye progress fetch karne ke liye
+ * Startup ID ke zariye progress fetch karne ke liye (Alias methods dono support ke liye)
  * @param {Long} startupId
  */
 export const getProgressByStartupId = async (startupId) => {
     try {
-        // URL banega: http://localhost:8080/api/progress/startup/{startupId}
         const response = await api.get(`/progress/startup/${startupId}`);
         return response.data;
     } catch (error) {
         console.error("Fetching progress failed:", error.response?.data || error.message);
         throw error;
     }
+};
+
+export const getProgressByStartup = async (startupId) => {
+    return await getProgressByStartupId(startupId);
 };
 
 /**
@@ -53,4 +54,11 @@ export const updateProgress = async (id, data) => {
         console.error("Update failed:", error.response?.data || error.message);
         throw error;
     }
+};
+
+/**
+ * Create or Update progress wrapper
+ */
+export const createOrUpdateProgress = async (progressData) => {
+    return await saveProgress(progressData);
 };

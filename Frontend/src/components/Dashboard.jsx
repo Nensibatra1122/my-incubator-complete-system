@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { Lightbulb, Rocket, DollarSign, Users, Bell, TrendingUp, Plus, Trash2, CheckCircle2, Circle, Shield, Briefcase, Award, BookOpen, UserCheck, MessageSquare, Eye } from 'lucide-react';
-import axios from 'axios';
+import api from '../api/axios'; // Centralized axios instance import kiya
 
 const StatCard = ({ title, value, icon: Icon, color }) => (
     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group">
@@ -43,7 +43,7 @@ const Dashboard = () => {
         }
     }, [tasks, userRole]);
 
-    // Fetch Backend Dynamic Analytics Data with Authorization Headers & Clean Parameters
+    // Fetch Backend Dynamic Analytics Data using centralized 'api' instance
     useEffect(() => {
         const fetchDashboardStats = async () => {
             // Agar user ADMIN nahi hai, toh analytics request block kar dein taake confidential data secure rahe
@@ -52,22 +52,13 @@ const Dashboard = () => {
             }
 
             try {
-                const token = localStorage.getItem('token') ||
-                    localStorage.getItem('jwtToken') ||
-                    localStorage.getItem('accessToken') ||
-                    localStorage.getItem('jwt');
-
-                const headers = { Authorization: token ? `Bearer ${token}` : '' };
-
                 // Ensure valid parameters are passed (avoiding any ':1' or empty placeholders)
-                const response = await axios.get('http://localhost:8080/api/analytics/dashboard', {
+                const response = await api.get('/analytics/dashboard', {
                     params: {
                         role: userRole,
                         email: userEmail && userEmail !== ':1' ? userEmail : '',
                         mentorId: userId
-                    },
-                    headers: headers,
-                    withCredentials: true
+                    }
                 });
                 setDashboardStats(response.data);
             } catch (error) {
@@ -93,16 +84,9 @@ const Dashboard = () => {
         setTasks(tasks.filter(task => task.id !== id));
     };
 
-    // Role-Based Target Notifications Fetching
+    // Role-Based Target Notifications Fetching using centralized 'api' instance
     const fetchUnreadCount = () => {
-        const token = localStorage.getItem('token') ||
-            localStorage.getItem('jwtToken') ||
-            localStorage.getItem('accessToken') ||
-            localStorage.getItem('jwt');
-
-        const headers = { Authorization: token ? `Bearer ${token}` : '' };
-
-        axios.get('http://localhost:8080/api/notifications/all', { headers, withCredentials: true })
+        api.get('/notifications/all')
             .then(response => {
                 const list = Array.isArray(response.data) ? response.data : [];
                 const targetedNotifications = list.filter(n => {

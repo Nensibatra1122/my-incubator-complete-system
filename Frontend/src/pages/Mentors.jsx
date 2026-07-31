@@ -39,7 +39,8 @@ const Mentors = () => {
             setCurrentUserEmail(storedEmail);
 
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            const response = await axios.get('http://localhost:8080/api/mentors', { headers });
+            // Relative path use kiya hai taake Nginx proxy handle kare
+            const response = await axios.get('/api/mentors', { headers });
             const data = Array.isArray(response.data) ? response.data : (response.data.content || response.data.data || []);
             setMentors(data);
             setFilteredMentors(data);
@@ -59,20 +60,15 @@ const Mentors = () => {
         const isInvestor = userRole === 'INVESTOR';
         const isStudent = userRole === 'STUDENT' || userRole === 'USER';
 
-        // 1. Role-based Isolation Filtering
         if (isInvestor) {
-            // Investor sees only mentors guiding their invested projects/startups
             result = result.filter(mentor => mentor.assignedStartup && mentor.assignedStartup !== "Not Assigned");
         } else if (isStudent) {
-            // Student/User sees only mentors assigned to their own startup/project
             result = result.filter(mentor => {
                 if (!mentor.assignedStartup || mentor.assignedStartup === "Not Assigned") return false;
-                // Match by user email or name if available in startup metadata, or fallback to general association
                 return true;
             });
         }
 
-        // 2. Search Query Filter
         if (searchQuery.trim() !== '') {
             const query = searchQuery.toLowerCase();
             result = result.filter(mentor =>
@@ -119,10 +115,10 @@ const Mentors = () => {
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
             if (editMode) {
-                await axios.put(`http://localhost:8080/api/mentors/${currentId}`, payload, { headers });
+                await axios.put(`/api/mentors/${currentId}`, payload, { headers });
                 setAlertMessage({ text: 'Mentor updated successfully!', type: 'success' });
             } else {
-                await axios.post('http://localhost:8080/api/mentors', payload, { headers });
+                await axios.post('/api/mentors', payload, { headers });
                 setAlertMessage({ text: 'Mentor added successfully!', type: 'success' });
             }
 
@@ -149,7 +145,7 @@ const Mentors = () => {
         try {
             const token = localStorage.getItem('token');
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            await axios.delete(`http://localhost:8080/api/mentors/${mentorToDelete}`, { headers });
+            await axios.delete(`/api/mentors/${mentorToDelete}`, { headers });
             setShowDeleteModal(false);
             setMentorToDelete(null);
             setAlertMessage({ text: 'Mentor deleted successfully!', type: 'success' });
@@ -164,8 +160,6 @@ const Mentors = () => {
 
     return (
         <div className="p-8 lg:p-12 max-w-7xl mx-auto bg-slate-50 min-h-screen">
-
-            {/* Top Navigation / Back Button Row */}
             <div className="mb-6 flex items-center justify-between">
                 <button
                     onClick={() => navigate('/dashboard')}
@@ -175,7 +169,6 @@ const Mentors = () => {
                 </button>
             </div>
 
-            {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-200 pb-6">
                 <div>
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Mentors Directory</h1>
@@ -188,7 +181,6 @@ const Mentors = () => {
                     </p>
                 </div>
 
-                {/* Add New Mentor Button - Sirf ADMIN ke liye show hoga */}
                 {isAdmin && (
                     <button
                         onClick={handleOpenAddModal}
@@ -199,7 +191,6 @@ const Mentors = () => {
                 )}
             </div>
 
-            {/* Alert Banner */}
             {alertMessage && (
                 <div className={`mb-6 p-4 rounded-2xl shadow-sm border flex items-center justify-between animate-in fade-in duration-200 ${
                     alertMessage.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
@@ -212,7 +203,6 @@ const Mentors = () => {
                 </div>
             )}
 
-            {/* Search Toolbar */}
             <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm mb-8 flex items-center justify-between gap-4">
                 <div className="relative w-full max-w-md">
                     <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
@@ -229,7 +219,6 @@ const Mentors = () => {
                 </span>
             </div>
 
-            {/* Mentors Grid / Loading / Empty States */}
             {loading ? (
                 <div className="text-center py-20 text-slate-400 font-bold animate-pulse">Loading mentors directory...</div>
             ) : filteredMentors.length === 0 ? (
@@ -262,7 +251,6 @@ const Mentors = () => {
                                             </div>
                                         </div>
 
-                                        {/* Action buttons based on role */}
                                         {isAdmin ? (
                                             <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100 text-xs font-bold">
                                                 <button
@@ -303,7 +291,6 @@ const Mentors = () => {
                                         </p>
                                     </div>
 
-                                    {/* Assigned Startup / Project Section */}
                                     <div className="p-4 bg-gradient-to-br from-orange-50/60 to-amber-50/30 rounded-2xl border border-orange-100 shadow-inner">
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-2 text-[10px] font-black text-slate-700 uppercase tracking-wider">
@@ -342,7 +329,6 @@ const Mentors = () => {
                 </div>
             )}
 
-            {/* Add / Edit Modal - Sirf Admin ke liye */}
             {showModal && isAdmin && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
@@ -404,7 +390,6 @@ const Mentors = () => {
                 </div>
             )}
 
-            {/* Custom Delete Confirmation Modal - Sirf Admin ke liye */}
             {showDeleteModal && isAdmin && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl border border-slate-100 text-center animate-in fade-in zoom-in duration-200">
