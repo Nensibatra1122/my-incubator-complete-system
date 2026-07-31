@@ -52,28 +52,14 @@ public class FinanceTransactionController {
 
         String currentEmail = authentication.getName().toLowerCase();
 
-        boolean isInvestor = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().contains("INVESTOR"));
-
-        boolean isMentor = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().contains("MENTOR"));
-
-        boolean isStudent = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().contains("STUDENT") || a.getAuthority().contains("USER"));
-
-        // Agar user Investor, Mentor, ya Student hai, toh sirf unke projects se associated transactions return honge
-        if (isInvestor || isMentor || isStudent) {
-            return list.stream()
-                    .filter(tx -> {
-                        if (tx.getFinanceProject() == null) return false;
-                        String createdBy = tx.getFinanceProject().getCreatedByEmail() != null ? tx.getFinanceProject().getCreatedByEmail().toLowerCase() : "";
-                        String mentorEmail = tx.getFinanceProject().getMentorEmail() != null ? tx.getFinanceProject().getMentorEmail().toLowerCase() : "";
-                        return createdBy.equals(currentEmail) || mentorEmail.equals(currentEmail);
-                    })
-                    .toList();
-        }
-
-        return list;
+        return list.stream()
+                .filter(tx -> {
+                    if (tx.getFinanceProject() == null) return true;
+                    String createdBy = tx.getFinanceProject().getCreatedByEmail() != null ? tx.getFinanceProject().getCreatedByEmail().toLowerCase() : "";
+                    String mentorEmail = tx.getFinanceProject().getMentorEmail() != null ? tx.getFinanceProject().getMentorEmail().toLowerCase() : "";
+                    return createdBy.isEmpty() || createdBy.equals(currentEmail) || mentorEmail.equals(currentEmail);
+                })
+                .toList();
     }
 
     @GetMapping("/project/{projectId}/type/{type}")

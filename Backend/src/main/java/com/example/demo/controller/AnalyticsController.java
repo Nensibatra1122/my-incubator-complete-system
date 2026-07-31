@@ -43,9 +43,12 @@ public class AnalyticsController {
                 long totalIdeas = ideaRepository.count();
                 long totalIncubations = incubationRepository.count();
                 long totalMentors = mentorRepository.count();
+                List<Incubation> allStartups = incubationRepository.findAll(); // Saari incubations/startups fetch karein
+
                 stats.put("totalIdeas", totalIdeas);
                 stats.put("totalIncubations", totalIncubations);
                 stats.put("totalMentors", totalMentors);
+                stats.put("startups", allStartups); // List bhejhein
                 stats.put("message", "Admin Overview Metrics");
                 break;
 
@@ -77,11 +80,10 @@ public class AnalyticsController {
                 List<Idea> userIdeas = List.of();
                 if (email != null && !email.isEmpty()) {
                     userIncubations = incubationRepository.findByIdea_UserEmail(email);
-                    // Agar IdeaRepository mein email se ideas find karne ka method hai
                     try {
                         userIdeas = ideaRepository.findByCreatedByEmail(email);
                     } catch (Exception e) {
-                        // Fallback agar method name alag ho
+                        // Fallback
                     }
                 }
                 stats.put("myIdeasCount", userIdeas.size());

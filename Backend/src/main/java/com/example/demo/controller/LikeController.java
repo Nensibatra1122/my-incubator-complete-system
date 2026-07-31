@@ -8,10 +8,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/likes")
+@CrossOrigin(origins = "*")
 public class LikeController {
 
     @Autowired
@@ -20,22 +22,27 @@ public class LikeController {
     @Autowired
     private LikeService likeService;
 
-    // 1. CREATE / SAVE (Integrated with Service for Activity Logging)
+    // 1. CREATE / TOGGLE LIKE (Integrated with Service for Activity Logging & Duplicate Prevention)
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Like> addLike(@RequestBody Like like, Authentication auth) {
-        Like savedLike = likeService.save(like, auth);
-        return ResponseEntity.ok(savedLike);
+    public ResponseEntity<?> addLike(@RequestBody Like like, Authentication auth) {
+        try {
+            Like savedLike = likeService.save(like, auth);
+            return ResponseEntity.ok(savedLike);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error processing like: " + e.getMessage());
+        }
     }
 
-    // 2. READ ALL
+    // 2. READ ALL (Accessible to authenticated users for community feed)
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public List<Like> getAllLikes() {
-        return likeService.getAll();
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<Like>> getAllLikes() {
+        List<Like> likes = likeService.getAll();
+        return ResponseEntity.ok(likes);
     }
 
-    // 3. READ ONE
+    // 3. READ ONE BY ID
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityService.isLikeOwner(#id, authentication)")
     public ResponseEntity<Like> getLikeById(@PathVariable Long id) {
@@ -44,7 +51,7 @@ public class LikeController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 4. UPDATE
+    // 4. UPDATE LIKE
     @PutMapping("/{id}")
     @PreAuthorize("@securityService.isLikeOwner(#id, authentication)")
     public ResponseEntity<Like> updateLike(@PathVariable Long id, @RequestBody Like likeDetails, Authentication auth) {
@@ -55,7 +62,7 @@ public class LikeController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // 5. DELETE
+    // 5. DELETE LIKE
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityService.isLikeOwner(#id, authentication)")
     public ResponseEntity<Void> deleteLike(@PathVariable Long id) {

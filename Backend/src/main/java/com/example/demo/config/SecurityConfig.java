@@ -43,8 +43,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public Endpoints (Authentication - Both POST & GET allowed for testing flexibility)
-                        .requestMatchers("/api/auth/**").permitAll()
+                        // Public Endpoints & Auth Routes
+                        .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
 
                         // Public GET Feeds
                         .requestMatchers(HttpMethod.GET, "/api/mentors/**").permitAll()
@@ -73,8 +73,8 @@ public class SecurityConfig {
                         // Incubator Analytics -> Admin Only
                         .requestMatchers("/api/analytics/**").hasRole("ADMIN")
 
-                        // Idea Pipeline & Chat Mutations -> Authenticated Users
-                        .requestMatchers("/api/ideas/**").hasAnyRole("ADMIN", "MENTOR", "STUDENT", "USER")
+                        // Idea Pipeline & Chat Mutations -> Authenticated Users (Including Investor)
+                        .requestMatchers("/api/ideas/**").hasAnyRole("ADMIN", "MENTOR", "STUDENT", "USER", "INVESTOR")
 
                         // Notifications -> Accessible to all authenticated users
                         .requestMatchers("/api/notifications/**").authenticated()

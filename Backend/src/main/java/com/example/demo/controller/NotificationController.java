@@ -52,32 +52,28 @@ public class NotificationController {
 
         String email = authentication.getName();
         User user = userRepository.findByEmail(email).orElse(null);
+        String userRole = (user != null && user.getRole() != null) ? user.getRole().name().toUpperCase() : "USER";
 
-        String userRole = (user != null && user.getRole() != null) ? user.getRole().name() : "USER";
-
+        // Agar user ADMIN hai, toh saari notifications dikhao
         if ("ADMIN".equals(userRole)) {
             return ResponseEntity.ok(allNotifications);
         }
 
-        boolean isBasicUser = "USER".equals(userRole) || "STUDENT".equals(userRole);
-
+        // Refined filtering based on user role and specific recipient/targetRole
         List<Notification> refinedList = allNotifications.stream().filter(n -> {
-            String targetRole = n.getTargetRole();
-
-            // General system alerts targetRole ya message/content ke base par check ki ja sakti hain
-            boolean isGeneralSystemAlert = targetRole != null && (
-                    "SYSTEM".equalsIgnoreCase(targetRole) ||
-                            "GENERAL".equalsIgnoreCase(targetRole)
-            );
-
-            if (isBasicUser) {
-                return isGeneralSystemAlert;
+            // 1. Agar notification directly kisi specific user ko assigned hai, toh sirf usi user ko dikhegi
+            if (n.getUser() != null && user != null) {
+                return n.getUser().getUserId().equals(user.getUserId());
             }
 
+            String targetRole = n.getTargetRole();
+
+            // 2. Agar targetRole blank ya ALL hai, toh sabhi ko dikhegi
             if (targetRole == null || targetRole.trim().isEmpty() || "ALL".equalsIgnoreCase(targetRole)) {
                 return true;
             }
 
+            // 3. Role-based matching (e.g. INVESTOR, USER, STUDENT, etc.)
             return targetRole.toUpperCase().contains(userRole);
         }).collect(Collectors.toList());
 

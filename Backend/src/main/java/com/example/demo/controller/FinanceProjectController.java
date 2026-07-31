@@ -18,7 +18,6 @@ public class FinanceProjectController {
     @Autowired
     private FinanceProjectService projectService;
 
-    // 1. ALL PROJECTS EXPENSES
     @GetMapping("/all-projects-expenses")
     @PreAuthorize("hasAnyRole('ADMIN', 'INVESTOR', 'MENTOR', 'STUDENT')")
     public ResponseEntity<List<ProjectExpenseDTO>> getAllProjectsExpenses(Authentication authentication) {
@@ -26,14 +25,12 @@ public class FinanceProjectController {
         return ResponseEntity.ok(list);
     }
 
-    // 2. SINGLE PROJECT TOTAL EXPENSE
     @GetMapping("/{id}/total-expense")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ProjectExpenseDTO> getTotalExpense(@PathVariable Long id) {
         return ResponseEntity.ok(projectService.getExpenseByProjectId(id));
     }
 
-    // 3. READ BY ID
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FinanceProject> getById(@PathVariable Long id) {
@@ -42,7 +39,6 @@ public class FinanceProjectController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 4. CREATE
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public FinanceProject create(@RequestBody FinanceProject p, Authentication auth) {
@@ -50,7 +46,6 @@ public class FinanceProjectController {
         return projectService.save(p);
     }
 
-    // 5. READ ALL (Updated with Admin, Investor, Mentor & Student filtering)
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'INVESTOR', 'MENTOR', 'STUDENT')")
     public List<FinanceProject> getAll(Authentication authentication) {
@@ -65,42 +60,26 @@ public class FinanceProjectController {
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().contains("ADMIN"));
 
-        // Agar user ADMIN hai, toh saare projects show honge
         if (isAdmin) {
             return list;
         }
 
-        boolean isInvestor = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().contains("INVESTOR"));
-
-        boolean isMentor = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().contains("MENTOR"));
-
-        boolean isStudent = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().contains("STUDENT") || a.getAuthority().contains("USER"));
-
-        // Agar user Investor, Mentor, ya Student hai, toh sirf wahi projects return honge jo unke email se mapped ya created hain
-        if (isInvestor || isMentor || isStudent) {
-            return list.stream()
-                    .filter(p -> {
-                        String createdBy = p.getCreatedByEmail() != null ? p.getCreatedByEmail().toLowerCase() : "";
-                        String mentorEmail = p.getMentorEmail() != null ? p.getMentorEmail().toLowerCase() : "";
-                        return createdBy.equals(currentEmail) || mentorEmail.equals(currentEmail);
-                    })
-                    .toList();
-        }
-
-        return list;
+        // Updated filter: Agar createdByEmail null bhi ho (jese purane projects mein hai), toh unhein bhi show hone dein
+        return list.stream()
+                .filter(p -> {
+                    String createdBy = p.getCreatedByEmail() != null ? p.getCreatedByEmail().toLowerCase() : "";
+                    String mentorEmail = p.getMentorEmail() != null ? p.getMentorEmail().toLowerCase() : "";
+                    return createdBy.isEmpty() || createdBy.equals(currentEmail) || mentorEmail.equals(currentEmail);
+                })
+                .toList();
     }
 
-    // 6. UPDATE
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ROLE_ADMIN') or @securityService.isProjectOwner(#id, authentication)")
     public ResponseEntity<FinanceProject> update(@PathVariable Long id, @RequestBody FinanceProject p) {
         return projectService.update(id, p);
     }
 
-    // 7. DELETE
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {

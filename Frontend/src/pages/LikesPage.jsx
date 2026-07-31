@@ -149,21 +149,24 @@ const LikesPage = () => {
                                         </div>
                                         {ideaLikes.length > 0 ? (
                                             <div className="flex flex-wrap gap-2">
-                                                {ideaLikes.map((like) => (
-                                                    <div key={like.likeId} className="flex items-center justify-between bg-rose-50/50 px-3 py-1.5 rounded-xl border border-rose-100 text-xs gap-3">
-                                                        <span className="font-semibold text-slate-700 flex items-center gap-1">
-                                                            <Mail size={12} className="text-slate-400" />
-                                                            {like.userEmail || (like.user && like.user.email) || 'Anonymous User'}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => handleDeleteLike(like.likeId)}
-                                                            className="text-rose-400 hover:text-rose-600 transition"
-                                                            title="Remove Like"
-                                                        >
-                                                            <Trash2 size={13} />
-                                                        </button>
-                                                    </div>
-                                                ))}
+                                                {ideaLikes.map((like) => {
+                                                    const userEmailIdentifier = like.userEmail || like.user?.email || like.email;
+                                                    return userEmailIdentifier ? (
+                                                        <div key={like.likeId} className="flex items-center justify-between bg-rose-50/50 px-3 py-1.5 rounded-xl border border-rose-100 text-xs gap-3">
+                                                            <span className="font-semibold text-slate-700 flex items-center gap-1">
+                                                                <Mail size={12} className="text-slate-400" />
+                                                                {userEmailIdentifier}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => handleDeleteLike(like.likeId)}
+                                                                className="text-rose-400 hover:text-rose-600 transition"
+                                                                title="Remove Like"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </div>
+                                                    ) : null;
+                                                })}
                                             </div>
                                         ) : (
                                             <p className="text-xs text-slate-400 italic">No likes on this idea yet.</p>

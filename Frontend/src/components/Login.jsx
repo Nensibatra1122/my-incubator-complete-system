@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Loader2, Rocket, ArrowRight, UserCircle, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../api/axios';
@@ -30,6 +30,7 @@ const Login = () => {
             console.log("Login Response Received:", response.data);
 
             if (response.data) {
+                // Save Authentication Token and Role
                 if (response.data.token) {
                     localStorage.setItem('token', response.data.token);
                 }
@@ -37,9 +38,18 @@ const Login = () => {
                     localStorage.setItem('role', response.data.role);
                 }
 
+                // Save User Name & Email dynamically from login response
+                const userName = response.data.name || response.data.fullName || response.data.username || email.split('@')[0];
+                const userEmail = response.data.email || email;
+
+                localStorage.setItem('userName', userName);
+                localStorage.setItem('userEmail', userEmail);
+
+                // Also save the full user object
+                localStorage.setItem('user', JSON.stringify(response.data));
+
                 showMessage('Login successful! Redirecting...', 'success');
                 setTimeout(() => {
-                    // Seedha main dashboard par redirect karein
                     navigate('/dashboard');
                 }, 1000);
             } else {

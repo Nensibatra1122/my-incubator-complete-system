@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { Building2, Plus, Edit, Trash2, Mail, DollarSign, X, ShieldAlert, Search, Briefcase, Award } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, X, ShieldAlert, Search, Briefcase, Award } from 'lucide-react';
 import api from '../api/axios';
 
 const InvestorsPage = () => {
@@ -28,12 +28,11 @@ const InvestorsPage = () => {
             setLoading(true);
             const rawRole = localStorage.getItem('role') || localStorage.getItem('userRole') || '';
             const storedRole = rawRole.replace('ROLE_', '').toUpperCase();
-            const storedEmail = localStorage.getItem('email') || '';
+            const storedEmail = localStorage.getItem('email') || localStorage.getItem('userEmail') || '';
 
             setUserRole(storedRole);
             setCurrentUserEmail(storedEmail);
 
-            // Agar user basic USER hai (jiska koi project nahi), toh API call avoid karein
             if (storedRole === 'USER') {
                 setInvestors([]);
                 setFilteredInvestors([]);
@@ -57,7 +56,7 @@ const InvestorsPage = () => {
         fetchInvestors();
     }, []);
 
-    // Filter Logic for Roles (Admin, Investor, Student/User) & Search Query
+    // Filter Logic: Filter records based on role and search criteria
     useEffect(() => {
         let result = [...investors];
 
@@ -65,16 +64,12 @@ const InvestorsPage = () => {
         const isInvestor = userRole === 'INVESTOR';
         const isStudent = userRole === 'STUDENT' || userRole === 'USER';
 
-        // 1. Role-based Isolation Filtering
         if (isInvestor) {
-            result = result.filter(inv => !currentUserEmail || inv.email?.toLowerCase() === currentUserEmail.toLowerCase());
-            if (result.length === 0) result = investors.slice(0, 1);
-        } else if (isStudent) {
-            result = result.filter(inv => true);
-        }
-
-        // 2. Search Query Filter
-        if (searchQuery.trim() !== '') {
+            result = result.filter(inv => {
+                const invEmail = inv.email || inv.user?.email || '';
+                return currentUserEmail && invEmail.toLowerCase() === currentUserEmail.toLowerCase();
+            });
+        } else if (searchQuery.trim() !== '' && !isStudent) {
             const query = searchQuery.toLowerCase();
             result = result.filter(inv =>
                 inv.investmentFocus?.toLowerCase().includes(query) ||
@@ -114,7 +109,7 @@ const InvestorsPage = () => {
             investmentFocus: investor.investmentFocus || '',
             minimumAmount: investor.minimumAmount || '',
             whatInvestorOffers: investor.whatInvestorOffers || '',
-            email: investor.email || ''
+            email: investor.email || investor.user?.email || ''
         });
         setIsModalOpen(true);
     };
@@ -155,16 +150,15 @@ const InvestorsPage = () => {
         <div className="flex bg-slate-50 min-h-screen">
             <Sidebar />
             <main className="flex-1 p-8 lg:p-12 relative overflow-y-auto">
-                {/* Header Section */}
                 <header className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
                             <Building2 className="text-orange-500" size={32} />
-                            {isInvestor ? 'My Investor Profile' : userRole === 'STUDENT' ? 'Your Startup Investors' : 'Investors Directory'}
+                            {isInvestor ? 'My Investor Profile & Project History' : userRole === 'STUDENT' ? 'Your Startup Investors' : 'Investors Directory'}
                         </h1>
                         <p className="text-slate-500 text-sm mt-1">
                             {isInvestor
-                                ? 'View your active fund allocations and venture capital profile details.'
+                                ? 'View your active fund allocations, linked startup history, and venture capital profile.'
                                 : userRole === 'STUDENT'
                                     ? 'Explore venture capitalists and investors aligned with your startup project.'
                                     : 'Comprehensive directory of venture capitalists, fund allocations, and investment portfolios.'}
@@ -181,14 +175,12 @@ const InvestorsPage = () => {
                     )}
                 </header>
 
-                {/* Feedback Notification Banner */}
                 {message.text && (
                     <div className={`mb-6 p-4 rounded-2xl text-xs font-bold ${message.type === 'error' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
                         {message.text}
                     </div>
                 )}
 
-                {/* Search & Toolbar for Admin / Non-Investors / Non-Basic Users */}
                 {!isInvestor && !isBasicUser && (
                     <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm mb-8 flex items-center justify-between gap-4">
                         <div className="relative w-full max-w-md">
@@ -207,7 +199,6 @@ const InvestorsPage = () => {
                     </div>
                 )}
 
-                {/* Main Content Rendering */}
                 {isBasicUser ? (
                     <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-4 max-w-lg mx-auto mt-12 shadow-sm">
                         <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto">
@@ -215,50 +206,80 @@ const InvestorsPage = () => {
                         </div>
                         <h3 className="text-xl font-extrabold text-slate-800">Access Restricted</h3>
                         <p className="text-slate-500 text-sm">
-                            Basic registered accounts do not have access to the Investors directory. Submit an active startup project to unlock full directory features.
+                            Basic registered accounts do not have access to the Investors directory.
                         </p>
                     </div>
                 ) : loading ? (
                     <div className="text-center py-20 text-slate-400 font-bold animate-pulse">Loading investors information...</div>
                 ) : isInvestor ? (
-                    <div className="max-w-3xl space-y-6">
-                        {filteredInvestors.slice(0, 1).map((investor) => {
-                            const investorName = investor.fullName || investor.name || investor.user?.fullName || investor.email?.split('@')[0] || 'Investor';
-                            return (
-                                <div key={investor.id || investor.investorId} className="bg-white rounded-3xl border border-slate-200/80 p-8 shadow-xl shadow-slate-100 space-y-6">
-                                    <div className="flex items-center justify-between border-b border-slate-100 pb-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-16 h-16 bg-orange-600 text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-orange-600/20">
-                                                {investorName.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <h2 className="text-xl font-black text-slate-900">{investorName}</h2>
-                                                <span className="text-xs bg-orange-50 text-orange-600 px-3 py-1 rounded-full font-extrabold border border-orange-100 inline-block mt-1.5">Verified Investor</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
-                                            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Minimum Investment</span>
-                                            <span className="text-xl font-black text-slate-900">${Number(investor.minimumAmount || 0).toLocaleString()}</span>
-                                        </div>
-                                    </div>
+                    <div className="max-w-4xl space-y-6">
+                        {filteredInvestors.length === 0 ? (
+                            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-4 shadow-sm">
+                                <ShieldAlert className="mx-auto text-orange-500" size={32} />
+                                <h3 className="text-lg font-bold text-slate-800">No Profile Record Found</h3>
+                                <p className="text-slate-500 text-sm">No investor profile is currently linked to your email address, or the administrator has not yet assigned one.</p>
+                            </div>
+                        ) : (
+                            filteredInvestors.map((investor) => {
+                                const investorName = investor.fullName || investor.name || investor.user?.fullName || investor.email || investor.user?.email || 'Investor';
+                                const assignedIncubations = investor.incubations || [];
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                                        <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-100 space-y-1.5">
-                                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                <Briefcase size={14} className="text-orange-500" /> Investment Focus
-                                            </span>
-                                            <p className="text-sm font-bold text-slate-800">{investor.investmentFocus || 'Not specified'}</p>
+                                return (
+                                    <div key={investor.id || investor.investorId} className="bg-white rounded-3xl border border-slate-200/80 p-8 shadow-xl shadow-slate-100 space-y-6">
+                                        <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-16 h-16 bg-orange-600 text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-orange-600/20">
+                                                    {investorName.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-xl font-black text-slate-900">{investorName}</h2>
+                                                    <span className="text-xs bg-orange-50 text-orange-600 px-3 py-1 rounded-full font-extrabold border border-orange-100 inline-block mt-1.5">Verified Investor Portfolio</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
+                                                <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Minimum Investment</span>
+                                                <span className="text-xl font-black text-slate-900">${Number(investor.minimumAmount || 0).toLocaleString()}</span>
+                                            </div>
                                         </div>
-                                        <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-100 space-y-1.5">
-                                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                <Award size={14} className="text-orange-500" /> What Investor Offers
-                                            </span>
-                                            <p className="text-sm font-bold text-slate-800">{investor.whatInvestorOffers || 'Standard investment support'}</p>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                            <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-100 space-y-1.5">
+                                                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <Briefcase size={14} className="text-orange-500" /> Investment Focus
+                                                </span>
+                                                <p className="text-sm font-bold text-slate-800">{investor.investmentFocus || 'Not specified'}</p>
+                                            </div>
+                                            <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-100 space-y-1.5">
+                                                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <Award size={14} className="text-orange-500" /> What Investor Offers
+                                                </span>
+                                                <p className="text-sm font-bold text-slate-800">{investor.whatInvestorOffers || 'Standard investment support'}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Associated Startups / Incubation History */}
+                                        <div className="pt-4 border-t border-slate-100 space-y-3">
+                                            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Your Associated Startups / Incubation History</h3>
+                                            {assignedIncubations.length === 0 ? (
+                                                <p className="text-xs text-slate-500 italic bg-slate-50 p-4 rounded-xl border border-slate-100">No startup projects currently linked to your investor portfolio.</p>
+                                            ) : (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    {assignedIncubations.map((inc, idx) => (
+                                                        <div key={idx} className="bg-orange-50/40 p-4 rounded-2xl border border-orange-100/60 flex items-center justify-between">
+                                                            <div>
+                                                                <h4 className="text-xs font-bold text-slate-900">{inc.programName || inc.title || `Startup #${idx + 1}`}</h4>
+                                                                <span className="text-[10px] text-slate-500">Status: Active Funding</span>
+                                                            </div>
+                                                            <span className="text-[10px] bg-orange-600 text-white font-bold px-2.5 py-1 rounded-xl shadow-xs">Linked</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })
+                        )}
                     </div>
                 ) : filteredInvestors.length === 0 ? (
                     <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-4 max-w-lg mx-auto mt-12 shadow-sm">
@@ -266,15 +287,13 @@ const InvestorsPage = () => {
                             <ShieldAlert size={32} />
                         </div>
                         <h3 className="text-xl font-extrabold text-slate-800">No Investors Found</h3>
-                        <p className="text-slate-500 text-sm">
-                            Aapki search ya current database mein filhal koi investor record mojood nahi hai.
-                        </p>
+                        <p className="text-slate-500 text-sm">No investor records match your search criteria.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredInvestors.map((investor) => {
                             const invId = investor.id || investor.investorId;
-                            const investorName = investor.fullName || investor.name || investor.user?.fullName || investor.email?.split('@')[0] || `Investor #${invId}`;
+                            const investorName = investor.fullName || investor.name || investor.user?.fullName || investor.email || investor.user?.email || `Investor #${invId}`;
 
                             return (
                                 <div key={invId} className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm flex flex-col justify-between space-y-5 hover:shadow-xl hover:border-orange-200 transition group">
@@ -336,7 +355,7 @@ const InvestorsPage = () => {
                     </div>
                 )}
 
-                {/* Add / Edit Professional Modal - Sirf Admin ke liye */}
+                {/* Add / Edit Professional Modal - Restricted to Admin */}
                 {isModalOpen && isAdmin && (
                     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                         <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl space-y-6 border border-slate-100 animate-in fade-in zoom-in duration-200">

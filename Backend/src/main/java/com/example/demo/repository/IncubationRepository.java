@@ -25,4 +25,9 @@ public interface IncubationRepository extends JpaRepository<Incubation, Long> {
 
     @Query("SELECT i.programName FROM Incubation i WHERE i.mentor.mentorId = :mentorId")
     List<String> findStartupNamesByMentorId(@Param("mentorId") Long mentorId);
+
+    // Updated JPQL Query matching Investor ManyToMany relation via Investor entity
+    @Query("SELECT i FROM Investor inv JOIN inv.incubations i WHERE inv.user.email = :email")
+    List<Incubation> findByInvestorEmail(@Param("email") String email);
+
 }

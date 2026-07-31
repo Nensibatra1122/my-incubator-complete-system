@@ -9,6 +9,7 @@ import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,7 @@ public class NotificationService {
         return repository.findById(id);
     }
 
+    @Transactional
     public Notification save(Notification notification, Authentication auth) {
         Notification saved = repository.save(notification);
 
@@ -61,6 +63,7 @@ public class NotificationService {
         return repository.existsById(id);
     }
 
+    @Transactional
     public void deleteById(Long id, Authentication auth) {
         repository.deleteById(id);
 
@@ -79,6 +82,7 @@ public class NotificationService {
         }
     }
 
+    @Transactional
     public void sendNotification(User user, String message) {
         if (user == null) {
             return;

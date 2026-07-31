@@ -31,7 +31,7 @@ public class IdeaController {
     private IncubationRepository incubationRepository;
 
     @PostMapping
-    @PreAuthorize("hasRole('STUDENT') or hasRole('ADMIN') or hasRole('USER')")
+    @PreAuthorize("isAuthenticated()")
     public Idea createIdea(@RequestBody Idea idea, Authentication auth) {
         return ideaService.createIdea(idea, auth);
     }
@@ -97,7 +97,6 @@ public class IdeaController {
                 return ResponseEntity.ok(Map.of("message", "Idea status updated to REJECTED successfully."));
             }
             else if ("ACCEPTED".equals(newStatus)) {
-                // Robust Check: Check both Idea status and if Incubation record already exists in DB
                 Incubation existingIncubation = incubationRepository.findByIdeaId(ideaId);
 
                 if ("ACCEPTED".equalsIgnoreCase(idea.getStatus()) || existingIncubation != null) {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Register from './pages/Register';
 import Dashboard from './components/Dashboard';
@@ -197,6 +197,16 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <Startups />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Redirect /my-invested-startups directly to /startups */}
+                <Route
+                    path="/my-invested-startups"
+                    element={
+                        <ProtectedRoute>
+                            <Navigate to="/startups" replace />
                         </ProtectedRoute>
                     }
                 />

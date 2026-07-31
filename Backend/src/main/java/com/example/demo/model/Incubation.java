@@ -22,7 +22,7 @@ public class Incubation {
     private LocalDate startDate;
     private String status;
 
-    // Mentor ke sath proper Relationship (Many-to-One)
+    // Mentor ke sath Relationship
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "mentor_id")
     @JsonIgnoreProperties({"incubations", "hibernateLazyInitializer", "handler"})

@@ -2,9 +2,11 @@ package com.example.demo.service;
 
 import com.example.demo.model.Like;
 import com.example.demo.model.ActivityLog;
+import com.example.demo.model.Idea;
 import com.example.demo.model.User;
 import com.example.demo.repository.LikeRepository;
 import com.example.demo.repository.ActivityLogRepository;
+import com.example.demo.repository.IdeaRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -25,15 +27,24 @@ public class LikeService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private IdeaRepository ideaRepository; // <-- IdeaRepository inject kiya
+
     public List<Like> getAll() {
         return repository.findAll();
     }
 
     public Like save(Like like, Authentication auth) {
+        // Ensure user is attached if coming from frontend request
+        String email = (auth != null && auth.getName() != null) ? auth.getName() : "System";
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user != null && like.getUser() == null) {
+            like.setUser(user);
+        }
+
         Like savedLike = repository.save(like);
 
         // Activity Log for Like save/create
-        String email = (auth != null && auth.getName() != null) ? auth.getName() : "System";
         try {
             ActivityLog log = new ActivityLog();
             log.setAction("SAVE_LIKE");
@@ -41,7 +52,6 @@ public class LikeService {
             log.setCreatedByEmail(email);
             log.setTimestamp(LocalDateTime.now());
 
-            User user = userRepository.findByEmail(email).orElse(null);
             if (user != null) {
                 log.setUser(user);
             }
@@ -53,13 +63,17 @@ public class LikeService {
         return savedLike;
     }
 
-    // --- Toggle Like Logic ---
+    // --- Toggle Like Logic (Fixed) ---
     public boolean toggleLike(Long ideaId, Authentication auth) {
         if (auth == null || auth.getName() == null) return false;
 
         String email = auth.getName();
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) return false;
+
+        // Fetch idea to make sure it exists
+        Idea idea = ideaRepository.findById(ideaId).orElse(null);
+        if (idea == null) return false;
 
         // Check if user already liked this idea
         Optional<Like> existingLike = repository.findAll().stream()
@@ -73,8 +87,7 @@ public class LikeService {
         } else {
             Like newLike = new Like();
             newLike.setUser(user);
-            // Idea set karne ke liye agar idea repository ki zaroorat ho toh inject kar sakte hain,
-            // ya incoming object se handle kar sakte hain.
+            newLike.setIdea(idea); // <-- Yahan Idea properly set kar diya
             repository.save(newLike);
             return true; // Liked
         }

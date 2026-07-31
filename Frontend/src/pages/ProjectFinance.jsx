@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import api from '../api/axios';
-import { DollarSign, Plus, ArrowLeft, TrendingDown, TrendingUp, Trash2, Edit3, Info, X, CheckCircle2, Briefcase } from 'lucide-react';
+import { Plus, ArrowLeft, TrendingDown, TrendingUp, Trash2, Edit3, Info, X, CheckCircle2, Briefcase, Download, Tag } from 'lucide-react';
 
 const ProjectFinance = () => {
     const navigate = useNavigate();
@@ -11,47 +11,55 @@ const ProjectFinance = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Role-based permissions configuration across roles including STUDENT, USER, MENTOR
     const userRole = (localStorage.getItem('userRole') || localStorage.getItem('role') || 'USER').trim().toUpperCase();
     const isAdmin = userRole === 'ADMIN';
     const isInvestor = userRole === 'INVESTOR';
     const isMentor = userRole === 'MENTOR';
-    const isStudent = userRole === 'STUDENT' || userRole === 'USER';
 
-    // Admin, Investor, and authorized roles can manage project finances
-    const canManageFinance = isAdmin || isInvestor || isMentor;
+    const categoryOptions = [
+        'Server Hosting',
+        'Cloud API',
+        'Marketing & Ads',
+        'Hardware & Equipment',
+        'Office Supplies',
+        'Software Licenses',
+        'Consulting Fees',
+        'Travel & Transport',
+        'Legal & Compliance',
+        'Utilities & Electricity',
+        'Maintenance & Repairs',
+        'Research & Development',
+        'Salaries & Stipends',
+        'General Operational'
+    ];
 
-    // Form States for New Transaction
+    const [showAddModal, setShowAddModal] = useState(false);
     const [amount, setAmount] = useState('');
     const [type, setType] = useState('EXPENSE');
-    const [description, setDescription] = useState('');
+    const [description, setDescription] = useState('Server Hosting');
 
-    // Success Popup State
     const [successMessage, setSuccessMessage] = useState('');
 
-    // Detailed / Edit Transaction Modal State
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editAmount, setEditAmount] = useState('');
     const [editType, setEditType] = useState('EXPENSE');
     const [editDescription, setEditDescription] = useState('');
 
-    // Form States for New Project Modal
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [newTitle, setNewTitle] = useState('');
     const [newBudget, setNewBudget] = useState('');
 
-    useEffect(() => {
-        fetchProjects();
+    const fetchTransactions = useCallback(async (projectId) => {
+        try {
+            const response = await api.get(`/finance-transactions/by-project/${projectId}`);
+            setTransactions(response.data);
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+        }
     }, []);
 
-    useEffect(() => {
-        if (selectedProject) {
-            fetchTransactions(selectedProject.id || selectedProject.projectId);
-        }
-    }, [selectedProject]);
-
-    const fetchProjects = async () => {
+    const fetchProjects = useCallback(async () => {
         try {
             const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
             const currentUserEmail = (storedUser.email || localStorage.getItem('userEmail') || '').toLowerCase();
@@ -59,7 +67,6 @@ const ProjectFinance = () => {
             const response = await api.get('/finance-projects').catch(() => ({ data: [] }));
             let allProjects = Array.isArray(response.data) ? response.data : [];
 
-            // Confidentiality Filtering: If user is not Admin, filter projects
             if (!isAdmin) {
                 allProjects = allProjects.filter(proj => {
                     const assignedMentor = (proj.mentorEmail || proj.mentor?.email || '').toLowerCase();
@@ -70,72 +77,82 @@ const ProjectFinance = () => {
                     return assignedMentor === currentUserEmail ||
                         assignedInvestor === currentUserEmail ||
                         assignedStudent === currentUserEmail ||
-                        createdBy === currentUserEmail;
+                        createdBy === currentUserEmail ||
+                        createdBy === '';
                 });
             }
 
             setProjects(allProjects);
-            if (allProjects.length > 0 && !selectedProject) {
-                setSelectedProject(allProjects[0]);
+            if (allProjects.length > 0) {
+                setSelectedProject(prev => prev || allProjects[0]);
             }
         } catch (error) {
             console.error('Error fetching finance projects:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [isAdmin]);
 
-    const fetchTransactions = async (projectId) => {
-        try {
-            const response = await api.get(`/finance-transactions/by-project/${projectId}`);
-            setTransactions(response.data);
-        } catch (error) {
-            console.error('Error fetching transactions:', error);
+    useEffect(() => {
+        fetchProjects();
+    }, [fetchProjects]);
+
+    useEffect(() => {
+        if (selectedProject) {
+            const pId = selectedProject.id || selectedProject.projectId;
+            fetchTransactions(pId);
         }
-    };
+    }, [selectedProject, fetchTransactions]);
 
-    // Trigger Toast Notification Popup
     const showNotification = (msg) => {
         setSuccessMessage(msg);
         setTimeout(() => setSuccessMessage(''), 4000);
     };
 
-    // Add Transaction Handler
     const handleAddTransaction = async (e) => {
         e.preventDefault();
-        if (!canManageFinance) return;
+        if (isInvestor) return;
         const projId = selectedProject?.id || selectedProject?.projectId;
         if (!amount || !projId) return;
+
+        if (!description || description.trim() === '') {
+            showNotification("Please provide or select a description/category!");
+            return;
+        }
 
         try {
             await api.post(`/finance-transactions/project/${projId}`, {
                 amount: parseFloat(amount),
                 type: type,
-                description: description || 'General Transaction'
+                description: description.trim()
             });
 
             showNotification(`Successfully added ${type} of $${amount}!`);
 
             setAmount('');
-            setDescription('');
-            fetchTransactions(projId);
-            fetchProjects();
+            setDescription('Server Hosting');
+            setShowAddModal(false);
+            await fetchTransactions(projId);
+            await fetchProjects();
         } catch (error) {
             console.error('Error adding transaction:', error);
         }
     };
 
-    // Edit Transaction Handler
     const handleUpdateTransaction = async (e) => {
         e.preventDefault();
-        if (!canManageFinance) return;
-        if (!selectedTransaction || !editAmount) return;
+        if (isInvestor || !selectedTransaction || !editAmount) return;
+
+        if (!editDescription || editDescription.trim() === '') {
+            showNotification("Description cannot be empty!");
+            return;
+        }
 
         try {
             await api.put(`/finance-transactions/${selectedTransaction.id}`, {
                 amount: parseFloat(editAmount),
                 type: editType,
-                description: editDescription || 'General Transaction'
+                description: editDescription.trim()
             });
 
             showNotification(`Transaction successfully updated!`);
@@ -143,18 +160,16 @@ const ProjectFinance = () => {
             setSelectedTransaction(null);
             setIsEditing(false);
             const projId = selectedProject?.id || selectedProject?.projectId;
-            fetchTransactions(projId);
-            fetchProjects();
+            await fetchTransactions(projId);
+            await fetchProjects();
         } catch (error) {
             console.error('Error updating transaction:', error);
         }
     };
 
-    // Create Project Handler
     const handleCreateProject = async (e) => {
         e.preventDefault();
-        if (!isAdmin && !isInvestor) return;
-        if (!newTitle || !newBudget) return;
+        if (isInvestor || !newTitle || !newBudget) return;
 
         try {
             const res = await api.post('/finance-projects', {
@@ -166,28 +181,62 @@ const ProjectFinance = () => {
             setShowProjectModal(false);
 
             showNotification(`Finance project "${newTitle}" created successfully!`);
-            fetchProjects();
+            await fetchProjects();
             if (res.data) setSelectedProject(res.data);
         } catch (error) {
             console.error('Error creating project:', error);
         }
     };
 
-    // Delete Transaction Handler
     const handleDeleteTransaction = async (id, e) => {
         if (e) e.stopPropagation();
-        if (!canManageFinance) return;
+        if (isInvestor) return;
         try {
             await api.delete(`/finance-transactions/${id}`);
             showNotification(`Transaction deleted successfully!`);
 
             const projId = selectedProject?.id || selectedProject?.projectId;
-            fetchTransactions(projId);
-            fetchProjects();
+            await fetchTransactions(projId);
+            await fetchProjects();
             if (selectedTransaction?.id === id) setSelectedTransaction(null);
         } catch (error) {
             console.error('Error deleting transaction:', error);
         }
+    };
+
+    const handleExportCSV = () => {
+        if (!selectedProject || transactions.length === 0) {
+            showNotification("No transactions available to export!");
+            return;
+        }
+
+        const headers = ["Transaction ID", "Type", "Amount ($)", "Description / Category", "Created By", "Date", "Time"];
+        const rows = transactions.map(tx => {
+            const dateObj = tx.createdAt ? new Date(tx.createdAt) : null;
+            const dateStr = dateObj ? dateObj.toLocaleDateString() : 'N/A';
+            const timeStr = dateObj ? dateObj.toLocaleTimeString() : 'N/A';
+
+            return [
+                tx.id,
+                tx.type,
+                tx.amount,
+                `"${(tx.description || '').replace(/"/g, '""')}"`,
+                `"${tx.createdByEmail || 'System'}"`,
+                dateStr,
+                timeStr
+            ];
+        });
+
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `${selectedProject.title.replace(/\s+/g, '_')}_Financial_Report.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showNotification("Financial report exported successfully as CSV!");
     };
 
     const openDetailsModal = (tx) => {
@@ -197,7 +246,7 @@ const ProjectFinance = () => {
 
     const openEditModal = (tx, e) => {
         e.stopPropagation();
-        if (!canManageFinance) return;
+        if (isInvestor) return;
         setSelectedTransaction(tx);
         setEditAmount(tx.amount);
         setEditType(tx.type);
@@ -205,11 +254,19 @@ const ProjectFinance = () => {
         setIsEditing(true);
     };
 
+    const totalExpenses = transactions
+        .filter(tx => tx.type === 'EXPENSE')
+        .reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+
+    const initialBudget = Number(selectedProject?.budget || 0);
+    const remainingBudget = initialBudget - totalExpenses;
+    const isOverSpent = remainingBudget < 0;
+    const spentPercentage = initialBudget > 0 ? Math.min(Math.round((totalExpenses / initialBudget) * 100), 100) : 0;
+
     return (
         <div className="flex bg-slate-50 min-h-screen relative selection:bg-orange-500 selection:text-white">
             <Sidebar />
             <main className="flex-1 p-10">
-                {/* Floating Success Popup Toast */}
                 {successMessage && (
                     <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-800 animate-bounce">
                         <CheckCircle2 className="text-emerald-400" size={24} />
@@ -227,20 +284,37 @@ const ProjectFinance = () => {
                     <ArrowLeft size={18} /> Back to Dashboard
                 </button>
 
-                {/* Header */}
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900">Project Finance Management</h1>
                         <p className="text-slate-500 text-sm mt-1">Track confidential project budgets, expenses, and monitor transaction logs ({userRole} view).</p>
                     </div>
-                    {(isAdmin || isInvestor) && (
-                        <button
-                            onClick={() => setShowProjectModal(true)}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 transition shadow-lg shadow-orange-600/20 cursor-pointer"
-                        >
-                            <Plus size={20} /> New Finance Project
-                        </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {selectedProject && transactions.length > 0 && (
+                            <button
+                                onClick={handleExportCSV}
+                                className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 rounded-2xl font-bold flex items-center gap-2 transition shadow-md cursor-pointer text-sm"
+                            >
+                                <Download size={18} /> Export CSV Report
+                            </button>
+                        )}
+                        {selectedProject && !isInvestor && (
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 transition shadow-lg shadow-orange-600/20 cursor-pointer text-sm"
+                            >
+                                <Plus size={20} /> Add Transaction
+                            </button>
+                        )}
+                        {!isInvestor && (
+                            <button
+                                onClick={() => setShowProjectModal(true)}
+                                className="bg-slate-900 hover:bg-black text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 transition shadow-lg cursor-pointer text-sm"
+                            >
+                                <Plus size={20} /> New Portfolio
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {loading ? (
@@ -252,7 +326,6 @@ const ProjectFinance = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Projects Selector Sidebar */}
                         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 h-fit">
                             <h2 className="text-lg font-bold text-slate-800 pb-2 border-b border-slate-100">Assigned Portfolios</h2>
                             <div className="space-y-2">
@@ -280,62 +353,42 @@ const ProjectFinance = () => {
                             </div>
                         </div>
 
-                        {/* Selected Project Details & Transactions */}
                         {selectedProject && (
                             <div className="lg:col-span-2 space-y-6">
-                                <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-lg flex justify-between items-center">
-                                    <div>
-                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Active Confidential Project</p>
-                                        <h2 className="text-2xl font-extrabold mt-1">{selectedProject.title}</h2>
-                                        <p className="text-xs text-slate-400 mt-2">Created by: {selectedProject.createdByEmail || 'Admin'}</p>
+                                <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-lg space-y-6">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Active Confidential Project</p>
+                                            <h2 className="text-2xl font-extrabold mt-1">{selectedProject.title}</h2>
+                                            <p className="text-xs text-slate-400 mt-2">Created by: {selectedProject.createdByEmail || 'Admin'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Remaining Budget</p>
+                                            <h3 className={`text-3xl font-extrabold mt-1 ${isOverSpent ? 'text-red-400' : 'text-orange-400'}`}>
+                                                {isOverSpent ? `-$${Math.abs(remainingBudget)}` : `$${remainingBudget}`}
+                                            </h3>
+                                            {isOverSpent && (
+                                                <span className="text-[10px] bg-red-500/20 text-red-300 font-bold px-2 py-0.5 rounded-md border border-red-500/30">
+                                                    Budget Exceeded
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Remaining Budget</p>
-                                        <h3 className="text-3xl font-extrabold text-orange-400 mt-1">${selectedProject.budget}</h3>
+
+                                    <div className="space-y-2 pt-2 border-t border-slate-800">
+                                        <div className="flex justify-between text-xs font-bold text-slate-400">
+                                            <span>Spent: ${totalExpenses} ({spentPercentage}%)</span>
+                                            <span>Initial Total: ${initialBudget}</span>
+                                        </div>
+                                        <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-3 rounded-full transition-all duration-500 ${isOverSpent ? 'bg-red-500' : 'bg-orange-500'}`}
+                                                style={{ width: `${Math.min(spentPercentage, 100)}%` }}
+                                            ></div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Add Transaction Form */}
-                                {canManageFinance && (
-                                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                                        <h3 className="text-md font-bold text-slate-800 mb-4">Add Transaction Record</h3>
-                                        <form onSubmit={handleAddTransaction} className="space-y-4">
-                                            <div className="flex gap-4 flex-wrap md:flex-nowrap">
-                                                <input
-                                                    type="number"
-                                                    placeholder="Enter amount ($)"
-                                                    value={amount}
-                                                    onChange={(e) => setAmount(e.target.value)}
-                                                    required
-                                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                                                />
-                                                <select
-                                                    value={type}
-                                                    onChange={(e) => setType(e.target.value)}
-                                                    className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-orange-500"
-                                                >
-                                                    <option value="EXPENSE">Expense</option>
-                                                    <option value="INCOME">Income</option>
-                                                </select>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                placeholder="What is this expense/income for? (e.g., Server Hosting, Cloud API)"
-                                                value={description}
-                                                onChange={(e) => setDescription(e.target.value)}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                                            />
-                                            <button
-                                                type="submit"
-                                                className="w-full bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold text-sm transition cursor-pointer"
-                                            >
-                                                Add Transaction Record
-                                            </button>
-                                        </form>
-                                    </div>
-                                )}
-
-                                {/* Transactions Table */}
                                 <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                                     <h3 className="text-md font-bold text-slate-800 mb-4">Transaction History (Click to view details)</h3>
                                     {transactions.length === 0 ? (
@@ -368,7 +421,7 @@ const ProjectFinance = () => {
                                                             <span className={`font-extrabold text-sm ${tx.type === 'INCOME' ? 'text-emerald-600' : 'text-red-600'}`}>
                                                                 {tx.type === 'INCOME' ? `+${tx.amount}` : `-${tx.amount}`}
                                                             </span>
-                                                            {canManageFinance && (
+                                                            {!isInvestor && (
                                                                 <>
                                                                     <button
                                                                         onClick={(e) => openEditModal(tx, e)}
@@ -398,7 +451,143 @@ const ProjectFinance = () => {
                     </div>
                 )}
 
-                {/* Transaction Detail / Edit Modal */}
+                {showAddModal && !isInvestor && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white p-8 rounded-3xl max-w-md w-full shadow-2xl relative space-y-4">
+                            <button
+                                onClick={() => setShowAddModal(false)}
+                                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                            <h3 className="text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                                <Tag className="text-orange-600" size={22} /> Add Transaction Record
+                            </h3>
+                            <form onSubmit={handleAddTransaction} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Amount ($)</label>
+                                    <input
+                                        type="number"
+                                        placeholder="Enter amount"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Transaction Type</label>
+                                    <select
+                                        value={type}
+                                        onChange={(e) => setType(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-orange-500"
+                                    >
+                                        <option value="EXPENSE">Expense</option>
+                                        <option value="INCOME">Income</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Category Tag / Quick Select <span className="text-red-500">*</span></label>
+                                    <div className="flex flex-wrap gap-1.5 mb-2 max-h-36 overflow-y-auto pr-1">
+                                        {categoryOptions.map((tag) => (
+                                            <button
+                                                key={tag}
+                                                type="button"
+                                                onClick={() => setDescription(tag)}
+                                                className={`text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition cursor-pointer border ${
+                                                    description === tag
+                                                        ? 'bg-orange-600 text-white border-orange-600 shadow-xs'
+                                                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Description required (Type or click tag)..."
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddModal(false)}
+                                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-sm transition cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-2xl font-bold text-sm transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+                                    >
+                                        <Plus size={18} /> Submit
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {showProjectModal && !isInvestor && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white p-8 rounded-3xl max-w-md w-full shadow-2xl relative space-y-4">
+                            <button
+                                onClick={() => setShowProjectModal(false)}
+                                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                            <h3 className="text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                                <Briefcase className="text-orange-600" size={22} /> Create New Portfolio
+                            </h3>
+                            <form onSubmit={handleCreateProject} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Project Title</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter project title"
+                                        value={newTitle}
+                                        onChange={(e) => setNewTitle(e.target.value)}
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Initial Budget ($)</label>
+                                    <input
+                                        type="number"
+                                        placeholder="Enter budget amount"
+                                        value={newBudget}
+                                        onChange={(e) => setNewBudget(e.target.value)}
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowProjectModal(false)}
+                                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-sm transition cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-2xl font-bold text-sm transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+                                    >
+                                        <Plus size={18} /> Create Project
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
                 {selectedTransaction && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white p-8 rounded-3xl max-w-md w-full shadow-2xl relative space-y-4">
@@ -424,32 +613,22 @@ const ProjectFinance = () => {
                                             <span className="font-extrabold text-slate-800">${selectedTransaction.amount}</span>
                                         </div>
                                         <div className="bg-slate-50 p-3 rounded-xl">
-                                            <span className="font-bold text-slate-500 block mb-1">Description / Purpose:</span>
+                                            <span className="font-bold text-slate-500 block mb-1">Description / Category:</span>
                                             <span className="text-slate-800 font-medium">{selectedTransaction.description || 'No description provided'}</span>
                                         </div>
                                         <div className="flex justify-between bg-slate-50 p-3 rounded-xl">
                                             <span className="font-bold text-slate-500">Created By:</span>
-                                            <span className="font-semibold text-slate-800">{selectedTransaction.createdByEmail || 'System'}</span>
+                                            <span className="text-slate-800 font-medium">{selectedTransaction.createdByEmail || 'System'}</span>
                                         </div>
                                         <div className="flex justify-between bg-slate-50 p-3 rounded-xl">
                                             <span className="font-bold text-slate-500">Date & Time:</span>
-                                            <span className="font-semibold text-slate-800">
-                                                {selectedTransaction.createdAt ? new Date(selectedTransaction.createdAt).toLocaleString() : 'N/A'}
-                                            </span>
+                                            <span className="text-slate-800 font-medium">{selectedTransaction.createdAt ? new Date(selectedTransaction.createdAt).toLocaleString() : 'N/A'}</span>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3 pt-2">
-                                        {canManageFinance && (
-                                            <button
-                                                onClick={(e) => openEditModal(selectedTransaction, e)}
-                                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold text-sm transition cursor-pointer flex items-center justify-center gap-2"
-                                            >
-                                                <Edit3 size={16} /> Edit
-                                            </button>
-                                        )}
+                                    <div className="pt-2">
                                         <button
                                             onClick={() => setSelectedTransaction(null)}
-                                            className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-2xl font-bold text-sm transition cursor-pointer"
+                                            className="w-full bg-slate-900 hover:bg-black text-white py-3 rounded-2xl font-bold text-sm transition cursor-pointer"
                                         >
                                             Close
                                         </button>
@@ -458,7 +637,7 @@ const ProjectFinance = () => {
                             ) : (
                                 <>
                                     <h3 className="text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-                                        <Edit3 className="text-blue-600" size={22} /> Edit Transaction
+                                        <Edit3 className="text-orange-600" size={22} /> Edit Transaction
                                     </h3>
                                     <form onSubmit={handleUpdateTransaction} className="space-y-4">
                                         <div>
@@ -468,40 +647,41 @@ const ProjectFinance = () => {
                                                 value={editAmount}
                                                 onChange={(e) => setEditAmount(e.target.value)}
                                                 required
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Type</label>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Transaction Type</label>
                                             <select
                                                 value={editType}
                                                 onChange={(e) => setEditType(e.target.value)}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-blue-500"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-orange-500"
                                             >
                                                 <option value="EXPENSE">Expense</option>
                                                 <option value="INCOME">Income</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description / Category</label>
                                             <input
                                                 type="text"
                                                 value={editDescription}
                                                 onChange={(e) => setEditDescription(e.target.value)}
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500"
+                                                required
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
                                             />
                                         </div>
                                         <div className="flex gap-3 pt-2">
                                             <button
                                                 type="button"
-                                                onClick={() => setIsEditing(false)}
+                                                onClick={() => setSelectedTransaction(null)}
                                                 className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-sm transition cursor-pointer"
                                             >
                                                 Cancel
                                             </button>
                                             <button
                                                 type="submit"
-                                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold text-sm transition cursor-pointer"
+                                                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-2xl font-bold text-sm transition shadow-md cursor-pointer"
                                             >
                                                 Save Changes
                                             </button>
@@ -509,62 +689,6 @@ const ProjectFinance = () => {
                                     </form>
                                 </>
                             )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Create Project Modal */}
-                {showProjectModal && (isAdmin || isInvestor) && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white p-8 rounded-3xl max-w-md w-full shadow-2xl relative space-y-4">
-                            <button
-                                onClick={() => setShowProjectModal(false)}
-                                className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full cursor-pointer"
-                            >
-                                <X size={18} />
-                            </button>
-                            <h3 className="text-xl font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-                                <Briefcase className="text-orange-600" size={22} /> Create New Finance Project
-                            </h3>
-                            <form onSubmit={handleCreateProject} className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Project Title</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g., AI Research Grant Portfolio"
-                                        value={newTitle}
-                                        onChange={(e) => setNewTitle(e.target.value)}
-                                        required
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Initial Budget ($)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="e.g., 25000"
-                                        value={newBudget}
-                                        onChange={(e) => setNewBudget(e.target.value)}
-                                        required
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-                                    />
-                                </div>
-                                <div className="flex gap-3 pt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowProjectModal(false)}
-                                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-sm transition cursor-pointer"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-2xl font-bold text-sm transition cursor-pointer shadow-lg shadow-orange-600/20"
-                                    >
-                                        Create Project
-                                    </button>
-                                </div>
-                            </form>
                         </div>
                     </div>
                 )}

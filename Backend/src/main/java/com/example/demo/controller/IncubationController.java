@@ -32,8 +32,11 @@ public class IncubationController {
             currentEmail = authentication.getName();
         }
 
-        boolean isAdminOrInvestor = authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().contains("ADMIN") || a.getAuthority().contains("INVESTOR"));
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().contains("ADMIN"));
+
+        boolean isInvestor = ("INVESTOR".equalsIgnoreCase(role)) || (authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().contains("INVESTOR")));
 
         boolean isMentor = ("MENTOR".equalsIgnoreCase(role)) || (authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().contains("MENTOR")));
@@ -41,8 +44,16 @@ public class IncubationController {
         boolean isStudentOrUser = ("USER".equalsIgnoreCase(role) || "STUDENT".equalsIgnoreCase(role)) || (authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().contains("STUDENT") || a.getAuthority().contains("USER")));
 
-        // 1. Mentor Filtering
-        if (isMentor && !isAdminOrInvestor) {
+        // 1. Investor Filtering
+        if (isInvestor && !isAdmin) {
+            if (currentEmail != null && !currentEmail.isEmpty()) {
+                incubations = incubationRepository.findByInvestorEmail(currentEmail);
+            } else {
+                incubations = List.of();
+            }
+        }
+        // 2. Mentor Filtering
+        else if (isMentor && !isAdmin) {
             if (mentorId != null) {
                 incubations = incubationRepository.findByMentor_MentorId(mentorId);
             } else if (currentEmail != null && !currentEmail.isEmpty()) {
@@ -51,11 +62,10 @@ public class IncubationController {
                 incubations = incubationRepository.findAll();
             }
         }
-        // 2. Student / User Filtering (Updated: agar filtering se data na mile toh findAll() fallback dega)
-        else if (isStudentOrUser && !isAdminOrInvestor) {
+        // 3. Student / User Filtering
+        else if (isStudentOrUser && !isAdmin) {
             if (currentEmail != null && !currentEmail.isEmpty()) {
                 incubations = incubationRepository.findByIdea_UserEmail(currentEmail);
-                // Fallback: Agar email match karne par list khali ho toh sabhi dikha dein taake testing mein masla na ho
                 if (incubations.isEmpty()) {
                     incubations = incubationRepository.findAll();
                 }
@@ -63,7 +73,7 @@ public class IncubationController {
                 incubations = incubationRepository.findAll();
             }
         }
-        // 3. Admin / Investor or Default fallback
+        // 4. Admin or Default fallback
         else {
             incubations = incubationRepository.findAll();
         }

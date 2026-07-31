@@ -20,7 +20,7 @@ public class IdeaService {
     @Autowired private IdeaRepository ideaRepository;
     @Autowired private ActivityLogRepository logRepository;
     @Autowired private UserRepository userRepository;
-    @Autowired private NotificationService notificationService; // Notification Service added
+    @Autowired private NotificationService notificationService;
 
     public List<Idea> getAllIdeas() {
         return ideaRepository.findAll();
@@ -31,10 +31,11 @@ public class IdeaService {
     }
 
     public Idea createIdea(Idea idea, Authentication auth) {
-        String userEmail = "nensi@utopia.com"; // Default fallback
+        String userEmail = "nensi@utopia.com";
         if (auth != null && auth.getName() != null) {
             userEmail = auth.getName();
         }
+
         idea.setCreatedByEmail(userEmail);
 
         if (idea.getSubmitterName() == null || idea.getSubmitterName().trim().isEmpty()) {
@@ -48,7 +49,6 @@ public class IdeaService {
         Idea savedIdea = ideaRepository.save(idea);
         addLog("CREATE", "New Idea Created: " + savedIdea.getTitle(), userEmail);
 
-        // Send Notification on Idea Creation
         User owner = userRepository.findByEmail(userEmail).orElse(null);
         if (owner != null) {
             notificationService.sendNotification(owner, "Aapka naya idea '" + savedIdea.getTitle() + "' successfully submit ho gaya hai!");
@@ -75,7 +75,6 @@ public class IdeaService {
             Idea updatedIdea = ideaRepository.save(idea);
             addLog("UPDATE", "Idea Updated: " + updatedIdea.getTitle(), currentEmail);
 
-            // Send Notification on Idea Update
             User owner = userRepository.findByEmail(currentEmail).orElse(null);
             if (owner != null) {
                 notificationService.sendNotification(owner, "Aapka idea '" + updatedIdea.getTitle() + "' update kar diya gaya hai.");
@@ -99,7 +98,6 @@ public class IdeaService {
         ideaRepository.delete(idea);
         addLog("DELETE", "Idea Deleted: " + ideaTitle, currentEmail);
 
-        // Send Notification on Idea Deletion
         User owner = userRepository.findByEmail(currentEmail).orElse(null);
         if (owner != null) {
             notificationService.sendNotification(owner, "Aapka idea '" + ideaTitle + "' delete kar diya gaya hai.");

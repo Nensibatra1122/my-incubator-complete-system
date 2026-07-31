@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { UserCircle, Save, Globe, Image as ImageIcon, FileText, Code, Cpu, User } from 'lucide-react';
 import api from '../api/axios';
@@ -21,20 +21,33 @@ const ProfilePage = () => {
         const fetchProfile = async () => {
             try {
                 const res = await api.get('/profiles/me');
+
+                // Fallback to localStorage for name if backend record is empty
+                const savedName = localStorage.getItem('userName') || '';
+
                 if (res.data && Object.keys(res.data).length > 0) {
                     setProfile({
                         id: res.data.id || res.data.profileId || null,
-                        fullName: res.data.fullName || '',
+                        fullName: res.data.fullName || savedName,
                         bio: res.data.bio || '',
                         linkedInUrl: res.data.linkedInUrl || '',
                         githubUrl: res.data.githubUrl || '',
                         profilePictureUrl: res.data.profilePictureUrl || '',
                         skills: res.data.skills || ''
                     });
+                } else {
+                    setProfile(prev => ({
+                        ...prev,
+                        fullName: savedName
+                    }));
                 }
             } catch (e) {
-                console.error("Failed to load profile", e);
-                setMessage({ text: 'Failed to load profile settings.', type: 'error' });
+                console.error("Failed to load profile from backend", e);
+                const savedName = localStorage.getItem('userName') || '';
+                setProfile(prev => ({
+                    ...prev,
+                    fullName: savedName
+                }));
             } finally {
                 setLoading(false);
             }

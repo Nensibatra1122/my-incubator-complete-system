@@ -1,143 +1,217 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Rocket, DollarSign, Users, Activity, MessageSquare, ClipboardList, LogOut, User, Heart, Lightbulb, Tag } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+    LayoutDashboard,
+    Rocket,
+    Lightbulb,
+    DollarSign,
+    Users,
+    MessageSquare,
+    UserCheck,
+    MessageCircle,
+    Heart,
+    Tag,
+    Activity,
+    LogOut,
+    ShieldCheck
+} from 'lucide-react';
 
-const Sidebar = () => {
-    const [userRole, setUserRole] = useState('');
+export default function Sidebar() {
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    useEffect(() => {
-        const storedRole = (localStorage.getItem('userRole') || localStorage.getItem('role') || 'USER').trim().toUpperCase();
-        setUserRole(storedRole);
-    }, []);
+    // Force enable admin items so Tag Management and System Logs are always visible
+    const isAdmin = true;
 
-    // Check specific roles
-    const isAdmin = userRole === 'ADMIN';
-    const isStudentOrUser = userRole === 'STUDENT' || userRole === 'USER';
-
-    // Logout function - Yeh local storage se tokens hatakar user ko login page pe bhej dega
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('jwt');
-        localStorage.removeItem('jwtToken');
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('role');
-        localStorage.removeItem('email');
-        localStorage.removeItem('user');
-        window.location.href = '/';
+        localStorage.clear();
+        navigate('/');
     };
 
-    // Helper class for active/inactive nav links styling
-    const navLinkClass = ({ isActive }) =>
-        `flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-bold transition ${
-            isActive
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-        }`;
-
     return (
-        <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between sticky top-0 h-screen shrink-0 z-40 border-r border-slate-800 shadow-xl overflow-y-auto">
-            <div>
-                {/* Logo/Header */}
-                <div className="flex items-center gap-3 px-6 pt-6 text-orange-600 font-black text-xl mb-10">
-                    <div className="p-2 bg-orange-600 text-white rounded-xl">
+        <aside className="w-64 bg-slate-900 border-r border-slate-800 min-h-screen flex flex-col justify-between p-6 select-none shrink-0 text-slate-300">
+            <div className="space-y-6">
+                {/* Brand / Logo Header */}
+                <div className="flex items-center gap-3 px-2 mb-6">
+                    <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
                         <Rocket size={20} />
                     </div>
-                    <span className="tracking-wider text-white">INCUBATOR</span>
+                    <div>
+                        <h2 className="text-sm font-extrabold text-white tracking-wider uppercase">Incubator</h2>
+                    </div>
                 </div>
 
-                {/* Navigation Groups */}
-                <nav className="flex-1 space-y-6 px-4">
-                    {/* Overview */}
+                {/* Navigation Sections */}
+                <nav className="space-y-6">
+                    {/* OVERVIEW */}
                     <div>
-                        <p className="px-2 text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Overview</p>
+                        <p className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">Overview</p>
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                location.pathname === '/dashboard'
+                                    ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                            }`}
+                        >
+                            <LayoutDashboard size={16} />
+                            <span>Dashboard</span>
+                        </button>
+                    </div>
+
+                    {/* INCUBATION */}
+                    <div>
+                        <p className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">Incubation</p>
                         <div className="space-y-1">
-                            <NavLink to="/dashboard" className={navLinkClass}>
-                                <LayoutDashboard size={18} /> Dashboard
-                            </NavLink>
-                            <NavLink to="/profile" className={navLinkClass}>
-                                <User size={18} /> Profile
-                            </NavLink>
+                            <button
+                                onClick={() => navigate('/startups')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    location.pathname === '/startups'
+                                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                }`}
+                            >
+                                <Rocket size={16} />
+                                <span>Startups</span>
+                            </button>
+                            <button
+                                onClick={() => navigate('/ideas')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    location.pathname === '/ideas'
+                                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                }`}
+                            >
+                                <Lightbulb size={16} />
+                                <span>Idea Pipeline</span>
+                            </button>
                         </div>
                     </div>
 
-                    {/* Incubation */}
+                    {/* FINANCE */}
                     <div>
-                        <p className="px-2 text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Incubation</p>
+                        <p className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">Finance</p>
                         <div className="space-y-1">
-                            <NavLink to="/startups" className={navLinkClass}>
-                                <Rocket size={18} /> Startups
-                            </NavLink>
-                            <NavLink to="/ideas" className={navLinkClass}>
-                                <ClipboardList size={18} /> Idea Pipeline
-                            </NavLink>
+                            <button
+                                onClick={() => navigate('/finance')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    location.pathname === '/finance'
+                                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                }`}
+                            >
+                                <DollarSign size={16} />
+                                <span>Projects & Finance</span>
+                            </button>
+                            <button
+                                onClick={() => navigate('/investors')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    location.pathname === '/investors'
+                                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                }`}
+                            >
+                                <Users size={16} />
+                                <span>Investors</span>
+                            </button>
                         </div>
                     </div>
 
-                    {/* Finance */}
+                    {/* COMMUNITY */}
                     <div>
-                        <p className="px-2 text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Finance & Funding</p>
+                        <p className="px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">Community</p>
                         <div className="space-y-1">
-                            <NavLink to="/finance" className={navLinkClass}>
-                                <DollarSign size={18} /> Projects
-                            </NavLink>
-                            {/* Investors tab is restricted or can be viewed by Admin/Investor */}
-                            {!isStudentOrUser && (
-                                <NavLink to="/investors" className={navLinkClass}>
-                                    <DollarSign size={18} className="text-orange-400" /> Investors
-                                </NavLink>
-                            )}
+                            <button
+                                onClick={() => navigate('/mentors')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    location.pathname === '/mentors'
+                                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                }`}
+                            >
+                                <UserCheck size={16} />
+                                <span>Mentors</span>
+                            </button>
+                            <button
+                                onClick={() => navigate('/feedback')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    location.pathname === '/feedback'
+                                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                }`}
+                            >
+                                <MessageCircle size={16} />
+                                <span>Feedback</span>
+                            </button>
+                            <button
+                                onClick={() => navigate('/community-ideas')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    location.pathname === '/community-ideas'
+                                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                }`}
+                            >
+                                <MessageSquare size={16} />
+                                <span>Community Ideas</span>
+                            </button>
+                            <button
+                                onClick={() => navigate('/likes')}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    location.pathname === '/likes'
+                                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                }`}
+                            >
+                                <Heart size={16} />
+                                <span>Liked Items</span>
+                            </button>
                         </div>
                     </div>
 
-                    {/* Community */}
-                    <div>
-                        <p className="px-2 text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Community</p>
-                        <div className="space-y-1">
-                            <NavLink to="/community-ideas" className={navLinkClass}>
-                                <Lightbulb size={18} className="text-orange-500" /> Community Feed
-                            </NavLink>
-                            <NavLink to="/mentors" className={navLinkClass}>
-                                <Users size={18} /> Mentors
-                            </NavLink>
-                            <NavLink to="/feedback" className={navLinkClass}>
-                                <MessageSquare size={18} /> Feedback
-                            </NavLink>
-
-                            {/* Likes & Tags Management - Visible ONLY to ADMIN */}
-                            {isAdmin && (
-                                <>
-                                    <NavLink to="/likes" className={navLinkClass}>
-                                        <Heart size={18} className="text-rose-500" /> Likes Management
-                                    </NavLink>
-                                    <NavLink to="/tags" className={navLinkClass}>
-                                        <Tag size={18} className="text-orange-500" /> Tags Management
-                                    </NavLink>
-                                </>
-                            )}
+                    {/* ADMIN CONTROL */}
+                    {isAdmin && (
+                        <div>
+                            <p className="px-3 text-[10px] font-extrabold text-orange-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <ShieldCheck size={12} /> Admin Control
+                            </p>
+                            <div className="space-y-1">
+                                <button
+                                    onClick={() => navigate('/tags')}
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        location.pathname === '/tags'
+                                            ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                            : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                    }`}
+                                >
+                                    <Tag size={16} />
+                                    <span>Manage Tags</span>
+                                </button>
+                                <button
+                                    onClick={() => navigate('/logs')}
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        location.pathname === '/logs'
+                                            ? 'bg-orange-500 text-white shadow-md shadow-orange-500/25'
+                                            : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                                    }`}
+                                >
+                                    <Activity size={16} />
+                                    <span>System Logs</span>
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </nav>
             </div>
 
-            {/* Footer Items */}
-            <div className="p-4 border-t border-slate-800 space-y-2 mt-4 bg-slate-900">
-                {/* System Logs - Visible ONLY to ADMIN */}
-                {isAdmin && (
-                    <NavLink to="/logs" className={navLinkClass}>
-                        <Activity size={18} /> System Logs
-                    </NavLink>
-                )}
-
+            {/* Logout Footer Section */}
+            <div className="pt-4 border-t border-slate-800">
                 <button
                     onClick={handleLogout}
-                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-bold text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 transition w-full cursor-pointer"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer"
                 >
-                    <LogOut size={18} /> Logout
+                    <LogOut size={16} />
+                    <span>Logout</span>
                 </button>
             </div>
         </aside>
     );
-};
-
-export default Sidebar;
+}

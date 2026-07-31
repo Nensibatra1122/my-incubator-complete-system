@@ -34,7 +34,12 @@ public class InvestorService {
         return repository.findById(id);
     }
 
+    // Overloaded save method jo optional tag bhi accept karega
     public Investor save(Investor investor, Authentication auth) {
+        return save(investor, "GENERAL", auth);
+    }
+
+    public Investor save(Investor investor, String tag, Authentication auth) {
         // 1. Root Fix & Role Validation: Fetch the managed User from database using ID
         if (investor.getUser() != null && investor.getUser().getUserId() != null) {
             User targetUser = userRepository.findById(investor.getUser().getUserId()).orElse(null);
@@ -82,12 +87,13 @@ public class InvestorService {
             savedInvestor = repository.save(investor);
         }
 
-        // 3. Activity Log for Investor save/create
+        // 3. Activity Log with custom Tag input support
         String email = (auth != null && auth.getName() != null) ? auth.getName() : "System";
         try {
             ActivityLog log = new ActivityLog();
             log.setAction("SAVE_INVESTOR");
-            log.setDescription("Investor record saved for ID: " + savedInvestor.getInvestorId());
+            log.setDescription("Investor record saved for ID: " + savedInvestor.getInvestorId() + " [Tag: " + tag + "]");
+
             log.setCreatedByEmail(email);
             log.setTimestamp(LocalDateTime.now());
 

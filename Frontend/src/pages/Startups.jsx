@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import api from '../api/axios';
-import { AlertCircle, X, CheckCircle2, Clock, Tag, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Tag, ShieldAlert } from 'lucide-react';
 
 const Startups = () => {
     const navigate = useNavigate();
@@ -22,7 +22,7 @@ const Startups = () => {
     const userRole = rawRole.replace('ROLE_', '').trim().toUpperCase();
 
     const userEmail = (localStorage.getItem('email') || localStorage.getItem('userEmail') || storedUser.email || '').toLowerCase().trim();
-    const userId = storedUser.id || storedUser.userId || storedUser.mentorId || localStorage.getItem('userId') || '';
+    const userId = storedUser.id || storedUser.userId || storedUser.mentorId || storedUser.investorId || localStorage.getItem('userId') || localStorage.getItem('investorId') || '';
 
     // Strict Admin check
     const isAdmin = userRole === 'ADMIN';
@@ -37,118 +37,129 @@ const Startups = () => {
         tagName: 'Artificial Intelligence'
     });
 
-    const fetchStartups = async () => {
-        try {
-            setLoading(true);
-
-            let data = [];
-            let progressData = [];
-
-            try {
-                const incubationsRes = await api.get('/incubations');
-                data = incubationsRes.data || [];
-            } catch (err) {
-                console.error("Error fetching incubations:", err);
-            }
-
-            try {
-                const progressRes = await api.get('/progress');
-                progressData = progressRes.data || [];
-            } catch (err) {
-                console.error("Error fetching progress (non-blocking):", err);
-            }
-
-            // Map progress by startupId for quick lookup
-            const progressMap = {};
-            progressData.forEach(p => {
-                const sId = p.startupId || p.startup?.id || p.startup?.incubationId;
-                if (sId) {
-                    progressMap[sId] = p.percentage ?? p.completionPercentage ?? 0;
-                }
-            });
-
-            const formatted = data.map((item, index) => {
-                const uniqueId = item.incubationId ?? item.id ?? (index + 1);
-                const tagInfo = item.tagName || item.tag?.tagName || item.idea?.tagName || item.idea?.tag?.tagName || item.idea?.category || 'General';
-
-                let mentorDisplay = 'Not Assigned';
-                let rawMentorValue = '';
-                let assignedMentorEmail = '';
-                let assignedMentorId = '';
-
-                if (item.mentor) {
-                    if (typeof item.mentor === 'object') {
-                        rawMentorValue = item.mentor.mentorId || item.mentor.id || '';
-                        assignedMentorEmail = (item.mentor.email || item.mentor.user?.email || '').toLowerCase().trim();
-                        assignedMentorId = String(item.mentor.mentorId || item.mentor.id || '');
-                        mentorDisplay = item.mentor.name || item.mentor.user?.fullName || item.mentor.expertise || `Mentor ID #${rawMentorValue}`;
-                    } else {
-                        mentorDisplay = item.mentor;
-                        rawMentorValue = item.mentor;
-                        assignedMentorId = String(item.mentor);
-                    }
-                }
-
-                if (item.mentorEmail) {
-                    assignedMentorEmail = item.mentorEmail.toLowerCase().trim();
-                }
-
-                // Enhanced creator email extraction supporting all possible DTO structures
-                const creatorEmail = (item.idea?.createdByEmail || item.idea?.userEmail || item.createdByEmail || item.email || '').toLowerCase().trim();
-                const computedProgress = progressMap[uniqueId] ?? item.percentage ?? item.completionPercentage ?? 0;
-
-                return {
-                    incubationId: uniqueId,
-                    programName: item.programName ?? `Startup Project #${uniqueId}`,
-                    description: item.description ?? 'Operational overview and milestone tracking for this incubated startup.',
-                    mentor: mentorDisplay,
-                    rawMentor: rawMentorValue,
-                    assignedMentorEmail,
-                    assignedMentorId,
-                    status: item.status ?? 'Active',
-                    startDate: item.startDate ?? '',
-                    ideaId: item.idea?.ideaId ?? item.ideaId ?? '',
-                    completionPercentage: computedProgress,
-                    tagName: tagInfo,
-                    creatorEmail
-                };
-            });
-
-            if (isAdmin) {
-                setStartups(formatted);
-            } else if (userRole === 'MENTOR') {
-                const filtered = formatted.filter(s => {
-                    const matchEmail = s.assignedMentorEmail && userEmail && s.assignedMentorEmail === userEmail;
-                    const matchId = s.assignedMentorId && userId && String(s.assignedMentorId).trim() === String(userId).trim();
-                    const matchName = s.mentor && storedUser.fullName && s.mentor.toLowerCase().includes(storedUser.fullName.toLowerCase());
-                    return matchEmail || matchId || matchName;
-                });
-                setStartups(filtered);
-            } else if (userRole === 'INVESTOR') {
-                setStartups(formatted);
-            } else {
-                // Fixed: Show all formatted startups for regular users/guests to prevent empty state hiding
-                setStartups(formatted);
-            }
-
-        } catch (error) {
-            console.error("Error in fetchStartups:", error);
-            setStartups([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
         let isMounted = true;
-        const loadData = async () => {
-            if (isMounted) {
-                await fetchStartups();
+
+        const fetchStartups = async () => {
+            try {
+                if (isMounted) setLoading(true);
+
+                let data = [];
+                let progressData = [];
+
+                try {
+                    const endpoint = userRole === 'INVESTOR' ? `/incubations?role=INVESTOR&email=${encodeURIComponent(userEmail)}` : '/incubations';
+                    const incubationsRes = await api.get(endpoint);
+                    data = incubationsRes.data || [];
+                } catch (err) {
+                    console.error("Error fetching incubations:", err);
+                }
+
+                try {
+                    const progressRes = await api.get('/progress');
+                    progressData = progressRes.data || [];
+                } catch (err) {
+                    console.error("Error fetching progress (non-blocking):", err);
+                }
+
+                const progressMap = {};
+                progressData.forEach(p => {
+                    const sId = p.startupId || p.startup?.id || p.startup?.incubationId;
+                    if (sId) {
+                        progressMap[sId] = p.percentage ?? p.completionPercentage ?? 0;
+                    }
+                });
+
+                const formatted = data.map((item, index) => {
+                    const uniqueId = item.incubationId ?? item.id ?? (index + 1);
+                    const tagInfo = item.tagName || item.tag?.tagName || item.idea?.tagName || item.idea?.tag?.tagName || item.idea?.category || 'General';
+
+                    let mentorDisplay = 'Not Assigned';
+                    let rawMentorValue = '';
+                    let assignedMentorEmail = '';
+                    let assignedMentorId = '';
+
+                    if (item.mentor) {
+                        if (typeof item.mentor === 'object') {
+                            rawMentorValue = item.mentor.mentorId || item.mentor.id || '';
+                            assignedMentorEmail = (item.mentor.email || item.mentor.user?.email || '').toLowerCase().trim();
+                            assignedMentorId = String(item.mentor.mentorId || item.mentor.id || '');
+                            mentorDisplay = item.mentor.name || item.mentor.user?.fullName || item.mentor.expertise || `Mentor ID #${rawMentorValue}`;
+                        } else {
+                            mentorDisplay = item.mentor;
+                            rawMentorValue = item.mentor;
+                            assignedMentorId = String(item.mentor);
+                        }
+                    }
+
+                    if (item.mentorEmail) {
+                        assignedMentorEmail = item.mentorEmail.toLowerCase().trim();
+                    }
+
+                    let assignedInvestorEmail = '';
+                    let assignedInvestorId = '';
+                    if (item.investor) {
+                        assignedInvestorEmail = (item.investor.email || item.investor.user?.email || '').toLowerCase().trim();
+                        assignedInvestorId = String(item.investor.investorId || item.investor.id || '');
+                    }
+
+                    const computedProgress = progressMap[uniqueId] ?? item.percentage ?? item.completionPercentage ?? 0;
+
+                    return {
+                        incubationId: uniqueId,
+                        programName: item.programName ?? `Startup Project #${uniqueId}`,
+                        description: item.description ?? 'Operational overview and milestone tracking for this incubated startup.',
+                        mentor: mentorDisplay,
+                        rawMentor: rawMentorValue,
+                        assignedMentorEmail,
+                        assignedMentorId,
+                        assignedInvestorEmail,
+                        assignedInvestorId,
+                        status: item.status ?? 'Active',
+                        startDate: item.startDate ?? '',
+                        ideaId: item.idea?.ideaId ?? item.ideaId ?? '',
+                        completionPercentage: computedProgress,
+                        tagName: tagInfo
+                    };
+                });
+
+                if (!isMounted) return;
+
+                if (isAdmin) {
+                    setStartups(formatted);
+                } else if (userRole === 'MENTOR') {
+                    const filtered = formatted.filter(s => {
+                        const matchEmail = s.assignedMentorEmail && userEmail && s.assignedMentorEmail === userEmail;
+                        const matchId = s.assignedMentorId && userId && String(s.assignedMentorId).trim() === String(userId).trim();
+                        const matchName = s.mentor && storedUser.fullName && s.mentor.toLowerCase().includes(storedUser.fullName.toLowerCase());
+                        return matchEmail || matchId || matchName;
+                    });
+                    setStartups(filtered);
+                } else if (userRole === 'INVESTOR') {
+                    const filtered = formatted.filter(s => {
+                        const matchEmail = s.assignedInvestorEmail && userEmail && s.assignedInvestorEmail === userEmail;
+                        const matchId = s.assignedInvestorId && userId && String(s.assignedInvestorId).trim() === String(userId).trim();
+                        return matchEmail || matchId;
+                    });
+                    setStartups(filtered);
+                } else {
+                    setStartups(formatted);
+                }
+
+            } catch (error) {
+                console.error("Error in fetchStartups:", error);
+                if (isMounted) setStartups([]);
+            } finally {
+                if (isMounted) setLoading(false);
             }
         };
-        loadData().catch(err => console.error(err));
-        return () => { isMounted = false; };
-    }, [userRole, userEmail]);
+
+        fetchStartups();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [userRole, userEmail, userId, isAdmin, storedUser.fullName]);
 
     const handleOpenAddModal = () => {
         if (!isAdmin) {
@@ -205,7 +216,7 @@ const Startups = () => {
             await api.delete(`/incubations/${startupToDelete}`);
             setShowDeleteModal(false);
             setStartupToDelete(null);
-            await fetchStartups();
+            window.location.reload();
         } catch (error) {
             console.error("Error deleting startup:", error);
             setErrorMessage("Failed to delete startup. Make sure you have ADMIN rights.");
@@ -243,7 +254,7 @@ const Startups = () => {
 
             setShowAddModal(false);
             setNewStartup({ programName: '', description: '', mentor: '', status: 'Active', startDate: '', ideaId: '', tagName: 'Artificial Intelligence' });
-            await fetchStartups();
+            window.location.reload();
         } catch (error) {
             console.error("Error saving startup:", error);
             const errorMsg = error.response?.data?.error || "Failed to save startup. Please check your inputs.";
@@ -380,8 +391,8 @@ const Startups = () => {
                             <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 font-bold text-xl">
                                 i
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-1">No Startups Found</h3>
-                            <p className="text-slate-500 text-sm">No incubated startup records are currently available in the system database.</p>
+                            <h3 className="text-lg font-bold text-slate-900 mb-1">No Relevant Startups Found</h3>
+                            <p className="text-slate-500 text-sm">No incubated startup records are currently assigned to your investor account.</p>
                         </div>
                     )}
                 </div>

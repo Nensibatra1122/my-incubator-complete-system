@@ -56,9 +56,9 @@ public class InvestorController {
                 .anyMatch(a -> a.getAuthority().contains("INVESTOR"));
 
         if (isInvestorRole) {
-            String loggedInUser = authentication.getName();
+            String loggedInUser = authentication.getName().toLowerCase();
             return allInvestors.stream()
-                    .filter(inv -> inv.toString().contains(loggedInUser))
+                    .filter(inv -> inv.getEmail() != null && inv.getEmail().toLowerCase().contains(loggedInUser))
                     .collect(Collectors.toList());
         }
 

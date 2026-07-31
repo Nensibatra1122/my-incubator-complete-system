@@ -1,13 +1,13 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: '/api', // Nginx automatically ise port 8080 par bhej dega bina CORS error ke
+    baseURL: 'http://localhost:8080/api', // Yahan aakhir mein '/api' lazmi add karein
 });
 
 // Interceptor: JWT token ko automatically har request mein daalne ke liye
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token'); // Key ko 'token' par set kar diya gaya hai
+        const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }

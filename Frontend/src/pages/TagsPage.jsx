@@ -1,32 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
-import { Tag, Plus, Trash2, Edit3, ShieldCheck, Hash, X, Check, Sparkles, ShieldAlert } from 'lucide-react';
+import { Tag, Plus, Trash2, Edit3, ShieldCheck, Hash, X, Check, Sparkles } from 'lucide-react';
 import api from '../api/axios';
 
 const TagsPage = () => {
-    const navigate = useNavigate();
     const [tags, setTags] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [tagName, setTagName] = useState('');
     const [message, setMessage] = useState({ text: '', type: '' });
-    const [accessDenied, setAccessDenied] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    // Get current user role from localStorage
-    const userRole = localStorage.getItem('userRole') || 'USER';
-
-    // Predefined suggested tags based on technical domains
-    const suggestedTags = [
+    // Comprehensive list covering all technical domains, AI/ML, and Software Operations tracks
+    const allSuggestedTags = [
+        // AI, ML & Data Science
         "Artificial Intelligence",
         "Machine Learning",
         "Data Science",
         "Computer Vision",
         "Deep Learning",
         "Natural Language Processing",
-        "Robotics",
+        "Predictive Modeling",
+        "Raw Data Pipelines",
+        "Algorithm Optimization",
+        "Data Analytics",
+
+        // Software Operations & DevOps
+        "CI/CD Pipelines",
+        "Docker & Containerization",
+        "System Automation",
+        "Database Optimization",
+        "Cloud Infrastructure",
+        "API Development",
+        "Microservices",
+        "Enterprise Architecture",
+        "System Logs",
+
+        // Backend & Tech Stacks
         "Spring Boot Backend",
         "Java Full Stack",
         "Python Automation",
+        "JPA / Hibernate",
+        "MySQL Database",
+        "RESTful Services",
+
+        // Specialized Engineering
         "IoT & Embedded Systems",
         "Sustainable Energy",
         "FinTech",
@@ -36,16 +52,16 @@ const TagsPage = () => {
         "Cybersecurity",
         "Web Development",
         "Mobile App Development",
-        "E-Commerce Solutions"
+        "E-Commerce Solutions",
+        "Autonomous Systems",
+        "Neural Networks"
     ];
 
-    // Edit State
     const [editingId, setEditingId] = useState(null);
     const [editName, setEditName] = useState('');
 
-    const fetchTags = async () => {
+    const fetchTags = useCallback(async () => {
         try {
-            setLoading(true);
             const response = await api.get('/tags');
             setTags(response.data || []);
         } catch (e) {
@@ -54,20 +70,18 @@ const TagsPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
-        // Strict check: Only ADMIN can manage/modify tags
-        if (userRole !== 'ADMIN') {
-            setAccessDenied(true);
-            setLoading(false);
-            return;
-        }
+        fetchTags().catch((err) => console.error("Error in fetchTags:", err));
+    }, [fetchTags]);
 
-        fetchTags();
-    }, [userRole]);
+    // Filter out tags that already exist in the database (case-insensitive check)
+    const existingTagNames = new Set(tags.map(t => t.tagName?.trim().toLowerCase()));
+    const suggestedTags = allSuggestedTags.filter(
+        suggestion => !existingTagNames.has(suggestion.toLowerCase())
+    );
 
-    // Create Tag Handler
     const handleCreateTag = async (e, customName = null) => {
         if (e) e.preventDefault();
         const nameToCreate = customName || tagName;
@@ -77,20 +91,18 @@ const TagsPage = () => {
             await api.post('/tags', { tagName: nameToCreate.trim() });
             setTagName('');
             setMessage({ text: 'Tag created successfully!', type: 'success' });
-            fetchTags();
+            await fetchTags();
         } catch (e) {
             console.error("Failed to create tag", e);
             setMessage({ text: 'Failed to create tag. It might already exist.', type: 'error' });
         }
     };
 
-    // Start Editing
     const startEdit = (tag) => {
         setEditingId(tag.tagId);
         setEditName(tag.tagName);
     };
 
-    // Save Edited Tag
     const handleUpdateTag = async (id) => {
         if (!editName.trim()) return;
         try {
@@ -98,49 +110,23 @@ const TagsPage = () => {
             setEditingId(null);
             setEditName('');
             setMessage({ text: 'Tag updated successfully!', type: 'success' });
-            fetchTags();
+            await fetchTags();
         } catch (e) {
             console.error("Failed to update tag", e);
             setMessage({ text: 'Failed to update tag.', type: 'error' });
         }
     };
 
-    // Delete Tag Handler
     const handleDeleteTag = async (id) => {
         try {
             await api.delete(`/tags/${id}`);
             setMessage({ text: 'Tag deleted successfully!', type: 'success' });
-            fetchTags();
+            await fetchTags();
         } catch (e) {
             console.error("Failed to delete tag", e);
             setMessage({ text: 'Failed to delete tag.', type: 'error' });
         }
     };
-
-    if (accessDenied) {
-        return (
-            <div className="flex bg-slate-50 min-h-screen">
-                <Sidebar />
-                <main className="flex-1 p-10 flex items-center justify-center">
-                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 text-center">
-                        <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <ShieldAlert size={30} />
-                        </div>
-                        <h3 className="text-xl font-extrabold text-slate-900 mb-2">Access Restricted</h3>
-                        <p className="text-slate-600 text-sm mb-6 leading-relaxed">
-                            Tag management and creation features are restricted to Administrators only.
-                        </p>
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="w-full py-3.5 bg-orange-600 text-white hover:bg-orange-700 rounded-2xl text-sm font-bold transition shadow-lg shadow-orange-600/25 cursor-pointer"
-                        >
-                            Return to Dashboard
-                        </button>
-                    </div>
-                </main>
-            </div>
-        );
-    }
 
     return (
         <div className="flex bg-slate-50 min-h-screen selection:bg-orange-500 selection:text-white">
@@ -154,7 +140,7 @@ const TagsPage = () => {
                         <p className="text-slate-500 mt-1">Create, customize, and manage system-wide categorical tags for your startups, AI projects, and systems.</p>
                     </div>
                     <span className="text-xs px-3 py-1 bg-orange-100 text-orange-700 rounded-full font-bold uppercase">
-                        Admin Portal
+                        Portal
                     </span>
                 </header>
 
@@ -169,7 +155,6 @@ const TagsPage = () => {
                         </div>
                     )}
 
-                    {/* Create Tag Card with Custom Input */}
                     <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
                         <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                             <Plus size={20} className="text-orange-500" /> Add Custom Tag
@@ -190,27 +175,29 @@ const TagsPage = () => {
                             </button>
                         </form>
 
-                        {/* Quick Suggestions Pills */}
                         <div className="pt-2">
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                 <Sparkles size={14} className="text-orange-500" /> Quick-Add Domain Recommendations:
                             </p>
-                            <div className="flex flex-wrap gap-2">
-                                {suggestedTags.map((suggestion, index) => (
-                                    <button
-                                        key={index}
-                                        type="button"
-                                        onClick={() => handleCreateTag(null, suggestion)}
-                                        className="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 text-slate-700 rounded-xl border border-slate-200 transition cursor-pointer"
-                                    >
-                                        + {suggestion}
-                                    </button>
-                                ))}
-                            </div>
+                            {suggestedTags.length > 0 ? (
+                                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-2">
+                                    {suggestedTags.map((suggestion, index) => (
+                                        <button
+                                            key={index}
+                                            type="button"
+                                            onClick={() => handleCreateTag(null, suggestion)}
+                                            className="text-xs font-semibold px-3 py-1.5 bg-slate-100 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 text-slate-700 rounded-xl border border-slate-200 transition cursor-pointer"
+                                        >
+                                            + {suggestion}
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-400 italic">All suggested tags have already been added!</p>
+                            )}
                         </div>
                     </div>
 
-                    {/* Existing Tags List */}
                     <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
                         <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                             <ShieldCheck size={20} className="text-orange-500" /> Available System Tags
