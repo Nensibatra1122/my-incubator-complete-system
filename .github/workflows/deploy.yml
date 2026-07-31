@@ -19,8 +19,8 @@ jobs:
           node-version: 20
 
       - name: Build Frontend
+        working-directory: frontend
         run: |
-          cd frontend
           npm install
           npm run build
 
