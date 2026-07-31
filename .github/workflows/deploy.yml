@@ -19,12 +19,12 @@ jobs:
           node-version: 20
 
       - name: Build Frontend
-        working-directory: frontend
+        working-directory: Frontend
         run: |
           npm install
           npm run build
 
       - name: Deploy to Nginx Directory
         run: |
-          sudo cp -r frontend/dist/* /var/www/html/
+          sudo cp -r Frontend/dist/* /var/www/html/
           sudo systemctl restart nginx
