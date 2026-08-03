@@ -1,36 +1,50 @@
-# My Incubator Complete System — Full Stack & Automated Deployment Guide
+<div align="center">
 
-A complete reference for the architecture, local development setup, AWS server provisioning, and GitHub Actions CI/CD pipeline for this project.
+# 🚀 My Incubator — Complete System
 
-> ⚠️ **Security note before you start:** the original draft of this document had real database passwords and RDS endpoints written directly into it. That's a serious risk if this file ever lands in a public repo or is shared with anyone outside the team — it becomes a leaked credential. This revision replaces every secret with a placeholder and shows you where to store the real values instead (`.env` files that are gitignored, or GitHub Actions Secrets). Rotate the password `1430Angsahib` and the root password `123` if they were ever committed anywhere, since they should now be treated as compromised.
+**Full-Stack Startup Incubator Platform**
+*React · Spring Boot · MySQL · AWS EC2 · GitHub Actions CI/CD*
 
----
+![Frontend](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-61DAFB?style=flat-square&logo=react&logoColor=white)
+![Backend](https://img.shields.io/badge/Backend-Spring%20Boot-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+![Database](https://img.shields.io/badge/Database-MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white)
+![Infra](https://img.shields.io/badge/Infra-AWS%20EC2%20%7C%20Nginx-FF9900?style=flat-square&logo=amazonaws&logoColor=white)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
 
-## Table of Contents
-
-1. [Project Overview & Tech Stack](#1-project-overview--tech-stack)
-2. [Backend Setup (Spring Boot & MySQL)](#2-backend-setup-spring-boot--mysql)
-3. [Frontend Setup (React)](#3-frontend-setup-react)
-4. [AWS EC2 Server Preparation](#4-aws-ec2-server-preparation)
-5. [Running the Backend as a Service](#5-running-the-backend-as-a-service)
-6. [Serving the Frontend via Nginx](#6-serving-the-frontend-via-nginx)
-7. [GitHub Actions Self-Hosted Runner](#7-github-actions-self-hosted-runner)
-8. [CI/CD Workflow (deploy.yml)](#8-cicd-workflow-deployyml)
-9. [Deploying Changes](#9-deploying-changes)
-10. [Production Hardening Checklist](#10-production-hardening-checklist)
-11. [Project Screenshots](#11-project-screenshots)
+</div>
 
 ---
 
-## 1. Project Overview & Tech Stack
+> ⚠️ **Security note:** earlier drafts of this document had real database passwords and RDS endpoints hardcoded. All secrets have been replaced with placeholders below — see [§10 Production Hardening](#-10-production-hardening-checklist) for where real values belong (`.env` files, GitHub Actions Secrets). Any credential that was ever committed should be treated as compromised and rotated immediately.
+
+## 📑 Table of Contents
+
+1. [Overview & Tech Stack](#-1-overview--tech-stack)
+   - [System Architecture (with Load Balancer)](#️-system-architecture)
+   - [Load Balancer Setup (AWS ALB)](#️-load-balancer-setup-aws-alb)
+2. [Backend Setup](#-2-backend-setup-spring-boot--mysql)
+3. [Frontend Setup](#-3-frontend-setup-react)
+4. [AWS EC2 Provisioning](#-4-aws-ec2-server-preparation)
+5. [Backend as a systemd Service](#-5-running-the-backend-as-a-service)
+6. [Serving Frontend via Nginx](#-6-serving-the-frontend-via-nginx)
+7. [Self-Hosted GitHub Runner](#-7-github-actions-self-hosted-runner)
+8. [CI/CD Pipeline](#-8-cicd-workflow-deployyml)
+9. [Deploying Changes](#-9-deploying-changes)
+10. [Production Hardening Checklist](#-10-production-hardening-checklist)
+11. [Screenshots](#-11-project-screenshots)
+
+---
+
+## 🧱 1. Overview & Tech Stack
 
 | Layer | Stack |
 |---|---|
-| Frontend | React (Vite), JavaScript, HTML5, CSS, Axios |
-| Backend | Java, Spring Boot, Spring Data JPA, MySQL |
-| Infrastructure | AWS EC2 (Ubuntu), Nginx, GitHub Actions (self-hosted runner) |
+| **Frontend** | React (Vite), JavaScript, HTML5, CSS, Axios |
+| **Backend** | Java, Spring Boot, Spring Data JPA, MySQL |
+| **Infrastructure** | AWS EC2 (Ubuntu), Nginx, GitHub Actions (self-hosted runner) |
 
-### Project Directory Structure
+<details>
+<summary><strong>📁 Project Directory Structure</strong></summary>
 
 ```text
 my-incubator-complete-system/
@@ -49,13 +63,92 @@ my-incubator-complete-system/
 └── README.md
 ```
 
+</details>
+
+### 🏗️ System Architecture
+
+**Current setup — single EC2 instance:**
+
+```mermaid
+graph TB
+    U["🧑‍💻 User Browser"]
+
+    subgraph EC2["AWS EC2 Instance (Ubuntu)"]
+        N["Nginx<br/>Reverse Proxy + Static Files"]
+        F["React Frontend<br/>(built via Vite)"]
+        B["Spring Boot Backend<br/>REST API — systemd service"]
+    end
+
+    D[("MySQL<br/>incubator_db")]
+
+    subgraph CICD["CI/CD"]
+        GH["GitHub Repo (master)"]
+        R["Self-Hosted Runner"]
+    end
+
+    U -->|HTTPS| N
+    N -->|serves static build| F
+    N -->|"/api/* reverse proxy"| B
+    B -->|JDBC| D
+
+    GH -->|"on push"| R
+    R -->|"build frontend + copy to /var/www/html"| N
+    R -->|"build jar + systemctl restart"| B
+```
+
+**Planned — scaled setup with Load Balancer:**
+
+```mermaid
+graph TB
+    U["🧑‍💻 User Browser"]
+    LB["⚖️ AWS Load Balancer"]
+
+    subgraph EC2A["EC2 Instance A"]
+        NA["Nginx + React"]
+        BA["Spring Boot Backend"]
+    end
+
+    subgraph EC2B["EC2 Instance B"]
+        NB["Nginx + React"]
+        BB["Spring Boot Backend"]
+    end
+
+    D[("MySQL / RDS<br/>incubator_db")]
+
+    U -->|HTTPS| LB
+    LB --> NA
+    LB --> NB
+    NA -->|"/api"| BA
+    NB -->|"/api"| BB
+    BA -->|JDBC| D
+    BB -->|JDBC| D
+```
+
+> 📝 Both backend instances point to a **shared** MySQL/RDS endpoint (not per-instance local MySQL) so data stays consistent across nodes. Add the load balancer's DNS/IP to each Nginx server block and to any CORS-allowed origins in the backend.
+
+### ⚖️ Load Balancer Setup (AWS ALB)
+
+1. **Create a Target Group** — EC2 console → Target Groups → New → target type `Instances`, protocol `HTTP`, port `80` (Nginx). Register each EC2 instance running the app.
+2. **Health check** — path `/` (or a dedicated `/health` endpoint on the backend proxied through Nginx), healthy threshold `2`, interval `30s`. The ALB only routes traffic to instances passing this check.
+3. **Create the Load Balancer** — EC2 console → Load Balancers → New → Application Load Balancer:
+   - Scheme: internet-facing
+   - Listeners: `HTTP:80` (and `HTTPS:443` once you attach an ACM certificate)
+   - Availability Zones: select at least 2 for redundancy
+   - Forward the listener to the Target Group created above
+4. **Security groups** — ALB's security group allows inbound `80`/`443` from `0.0.0.0/0`. Each EC2 instance's security group should only allow inbound `80` from the **ALB's security group**, not from the public internet directly.
+5. **DNS** — point your domain (Route 53 or external DNS) to the ALB's DNS name via a `CNAME` or an `A` record with Alias (if using Route 53).
+6. **CORS / allowed origins** — update `application.properties` (or a `@CrossOrigin` / `WebMvcConfigurer` bean) so the backend accepts requests from the ALB's domain, not `localhost`.
+7. **Sticky sessions** — enable if the app relies on server-side session state; skip if it's fully stateless (JWT/stateless REST is preferred for multi-instance setups).
+
+> ⚠️ Without step 4, traffic can bypass the load balancer and hit an EC2 instance directly — always lock instance security groups down to ALB-only traffic once the ALB is live.
+
 ---
 
-## 2. Backend Setup (Spring Boot & MySQL)
+## 🗄️ 2. Backend Setup (Spring Boot & MySQL)
 
 ### 2.1 Database Configuration
 
-**Don't commit real credentials.** Use environment variables and keep `application.properties` generic, or use `application-local.properties` (gitignored) for local secrets.
+**Never commit real credentials.** Keep `application.properties` generic and inject secrets via environment variables (or a gitignored `application-local.properties`).
 
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/incubator_db
@@ -65,7 +158,7 @@ spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 ```
 
-Set the actual values as environment variables before running the app, e.g. in a local `.env` file (gitignored) or your shell profile:
+Set the actual values locally (e.g. via a gitignored `.env` file or your shell profile):
 
 ```bash
 export DB_USERNAME=root
@@ -76,56 +169,42 @@ export DB_PASSWORD=your_local_password
 
 ```bash
 cd backend
-
-# Clean and install dependencies via Maven
-mvn clean install
-
-# Run the Spring Boot application
-mvn spring-boot:run
+mvn clean install        # install dependencies
+mvn spring-boot:run      # start the app
 ```
 
 ---
 
-## 3. Frontend Setup (React)
-
-### 3.1 Install Dependencies
+## ⚛️ 3. Frontend Setup (React)
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 3.2 Local Development & Production Build
-
-```bash
-# Start the local dev server
-npm run dev
-
-# Generate a production build (outputs to frontend/dist)
-npm run build
-```
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start local dev server |
+| `npm run build` | Production build → outputs to `frontend/dist` |
 
 ---
 
-## 4. AWS EC2 Server Preparation
+## ☁️ 4. AWS EC2 Server Preparation
 
-Connect to the EC2 instance via SSH, then run the following in order.
+SSH into your EC2 instance, then run the following in order.
 
 ### 4.1 System Update
-
 ```bash
 sudo apt update && sudo apt upgrade -y
 ```
 
 ### 4.2 Node.js (v20)
-
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
 ### 4.3 Nginx
-
 ```bash
 sudo apt install nginx -y
 sudo systemctl start nginx
@@ -133,7 +212,6 @@ sudo systemctl enable nginx
 ```
 
 ### 4.4 Java (OpenJDK 17)
-
 ```bash
 sudo apt update
 sudo apt install openjdk-17-jdk -y
@@ -141,19 +219,18 @@ java -version
 ```
 
 ### 4.5 MySQL Setup
-
 ```bash
 sudo apt install mysql-server -y
 sudo systemctl start mysql
 sudo systemctl enable mysql
 
-# Interactive hardening — set a strong root password, remove anonymous users/test DB
+# Interactive hardening — strong root password, remove anonymous users/test DB
 sudo mysql_secure_installation
 
 sudo mysql -u root -p
 ```
 
-Inside the MySQL shell, create the database and an application-specific user (avoid granting broad privileges to `root` over the network):
+Create the database and an app-specific user (avoid exposing `root` over the network):
 
 ```sql
 CREATE DATABASE incubator_db;
@@ -163,15 +240,15 @@ FLUSH PRIVILEGES;
 EXIT;
 ```
 
-> The original draft created `startup_db` but granted privileges on `incubator_db` — pick one database name and use it consistently everywhere (app config, EC2 setup, RDS). This guide uses `incubator_db` throughout.
+> 💡 Use **one consistent database name** (`incubator_db`) across app config, EC2 setup, and RDS — mismatched names are a common source of "works locally, breaks in prod" bugs.
 
-If you need remote access (e.g. from EC2 to an RDS instance, or dev machine to EC2's MySQL), check `bind-address` in `/etc/mysql/mysql.conf.d/mysqld.cnf` and restrict it to trusted IPs rather than opening it to `0.0.0.0` where avoidable. Restart after any change:
+If remote access is needed (e.g. EC2 → RDS, or dev machine → EC2's MySQL), restrict `bind-address` in `/etc/mysql/mysql.conf.d/mysqld.cnf` to trusted IPs rather than `0.0.0.0`. Restart after any change:
 
 ```bash
 sudo systemctl restart mysql
 ```
 
-Then update `backend/src/main/resources/application.properties` (or better, your environment variables) for the live database:
+Then point production config at the live database (prefer environment variables over hardcoding):
 
 ```properties
 spring.datasource.url=jdbc:mysql://<your-rds-endpoint>:3306/incubator_db?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -179,24 +256,22 @@ spring.datasource.username=${DB_USERNAME}
 spring.datasource.password=${DB_PASSWORD}
 ```
 
-Set `DB_USERNAME` / `DB_PASSWORD` as real environment variables on the server (or GitHub Actions secrets injected at deploy time) — never hardcode them in a file that gets committed.
+Set `DB_USERNAME` / `DB_PASSWORD` as real environment variables on the server, or inject them via GitHub Actions Secrets at deploy time — never in a committed file.
 
 ---
 
-## 5. Running the Backend as a Service
+## ⚙️ 5. Running the Backend as a Service
 
-`nohup` works for a quick test, but it won't survive a server reboot and gives you no automatic restart on crash. A `systemd` service is the more robust option for production.
+`nohup` is fine for a quick test but won't survive a reboot or auto-restart on crash. Use **systemd** for production.
 
 ### 5.1 Build the JAR
-
 ```bash
 cd backend
 mvn clean package
 ```
 
-### 5.2 Create a systemd Unit
-
-Create `/etc/systemd/system/incubator-backend.service`:
+### 5.2 Create the systemd Unit
+`/etc/systemd/system/incubator-backend.service`:
 
 ```ini
 [Unit]
@@ -216,10 +291,9 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-`EnvironmentFile` points to a gitignored `.env` file on the server containing `DB_USERNAME=...` and `DB_PASSWORD=...`.
+`EnvironmentFile` points to a gitignored `.env` on the server holding `DB_USERNAME=...` and `DB_PASSWORD=...`.
 
 ### 5.3 Enable & Start
-
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable incubator-backend
@@ -232,14 +306,14 @@ journalctl -u incubator-backend -f
 
 ---
 
-## 6. Serving the Frontend via Nginx
+## 🌐 6. Serving the Frontend via Nginx
 
 ```bash
 sudo cp -r frontend/dist/* /var/www/html/
 sudo systemctl restart nginx
 ```
 
-For a single-page app, add a fallback route in your Nginx site config so client-side routing works on refresh:
+For SPA routing to survive page refreshes, add a fallback in your Nginx site config:
 
 ```nginx
 location / {
@@ -249,10 +323,10 @@ location / {
 
 ---
 
-## 7. GitHub Actions Self-Hosted Runner
+## 🏃 7. GitHub Actions Self-Hosted Runner
 
-1. In the GitHub repo: **Settings → Actions → Runners → New self-hosted runner**.
-2. Select **Linux**, and run the commands GitHub shows you (they include a per-runner token — always copy it fresh from the GitHub UI rather than reusing an old one, since tokens expire):
+1. In the repo: **Settings → Actions → Runners → New self-hosted runner**
+2. Select **Linux** and run the commands GitHub shows (always copy the token fresh from the UI — it expires):
 
 ```bash
 mkdir actions-runner && cd actions-runner
@@ -265,7 +339,7 @@ tar xzf ./actions-runner-linux-x64-2.330.0.tar.gz
 ./config.sh --url https://github.com/<org>/<repo> --token <TOKEN_FROM_GITHUB_UI>
 ```
 
-Instead of running `./run.sh` in a foreground terminal (which dies when you disconnect), install it as a service so it survives reboots:
+3. Install as a service (survives disconnects and reboots — don't run `./run.sh` in the foreground):
 
 ```bash
 sudo ./svc.sh install
@@ -274,7 +348,7 @@ sudo ./svc.sh start
 
 ---
 
-## 8. CI/CD Workflow (deploy.yml)
+## 🔄 8. CI/CD Workflow (`deploy.yml`)
 
 `.github/workflows/deploy.yml`:
 
@@ -328,11 +402,11 @@ jobs:
           sudo systemctl restart incubator-backend
 ```
 
-Store `DB_USERNAME` and `DB_PASSWORD` under **Settings → Secrets and variables → Actions** in the repo, not in the YAML itself. This also removes the manual "build frontend only" gap in the original workflow — the backend is now rebuilt and restarted on every push too.
+> 🔐 Store `DB_USERNAME` and `DB_PASSWORD` under **Settings → Secrets and variables → Actions** — never in the YAML itself. This pipeline rebuilds **and** restarts both frontend and backend on every push to `master`.
 
 ---
 
-## 9. Deploying Changes
+## 📦 9. Deploying Changes
 
 ```bash
 git add .
@@ -340,60 +414,66 @@ git commit -m "Describe what changed"
 git push origin master
 ```
 
-The self-hosted runner picks up the push, rebuilds both frontend and backend, and restarts the services automatically.
+The self-hosted runner picks up the push, rebuilds both frontend and backend, and restarts services automatically.
 
 ---
 
-## 10. Production Hardening Checklist
+## ✅ 10. Production Hardening Checklist
 
-- [ ] All secrets (DB credentials, tokens) live in `.env` files or GitHub Secrets — never in tracked files.
-- [ ] `.env`, `*.log`, and `target/` are in `.gitignore`.
-- [ ] MySQL `bind-address` is restricted to known IPs, not open to the world.
-- [ ] Database user has only the privileges it needs (not raw `root` over the network).
-- [ ] EC2 security group only opens the ports you actually use (80/443 for web, 22 for SSH from your IP, 3306 only if truly needed remotely).
-- [ ] HTTPS is enabled on Nginx (e.g. via Certbot / Let's Encrypt) rather than serving plain HTTP.
-- [ ] Backend runs under systemd (not `nohup`) so it restarts on crash or reboot.
-- [ ] Logs are rotated (`journalctl` handles this for systemd services; set retention limits).
-- [ ] Rotate any credential that was ever committed to the repo, even if the repo is private.
+- [ ] All secrets (DB credentials, tokens) live in `.env` files or GitHub Secrets — never in tracked files
+- [ ] `.env`, `*.log`, and `target/` are in `.gitignore`
+- [ ] MySQL `bind-address` restricted to known IPs, not open to the world
+- [ ] Database user has least-privilege access (not raw `root` over the network)
+- [ ] EC2 security group only opens ports actually used (80/443 web, 22 SSH from your IP, 3306 only if truly needed remotely)
+- [ ] HTTPS enabled on Nginx (e.g. via Certbot / Let's Encrypt)
+- [ ] Backend runs under `systemd` (not `nohup`) — restarts on crash/reboot
+- [ ] Logs rotated (`journalctl` handles this for systemd; set retention limits)
+- [ ] Any credential ever committed to the repo has been rotated
 
 ---
 
-## 11. Project Screenshots
+## 🖼️ 11. Project Screenshots
 
-Paths below are relative to this `README.md`, which sits inside `Frontend/` alongside the `Screenshots/` folder (`Frontend/Screenshots/*.PNG`). If you move the README, update these paths accordingly.
+> Paths are relative to this `README.md`, located in `Frontend/` alongside `Screenshots/` (`Frontend/Screenshots/*.PNG`). Update paths if you relocate the README.
 
-### Login & Signup
+<div align="center">
 
+### 🔐 Login & Signup
 | Login | Signup |
-|---|---|
+|:---:|:---:|
 | ![Login](Screenshots/Login.PNG) | ![Signup](Screenshots/Signup.PNG) |
 
-### Dashboard & System Logs
-
+### 📊 Dashboard & System Logs
 | Dashboard | System Logs |
-|---|---|
+|:---:|:---:|
 | ![Dashboard](Screenshots/Dashboard.PNG) | ![System Logs](Screenshots/Systemlogs.PNG) |
 
-### Idea Pipeline & Feedback
-
+### 💡 Idea Pipeline & Feedback
 | Idea Pipeline | Feedback |
-|---|---|
+|:---:|:---:|
 | ![Idea Pipeline](Screenshots/Idea_Pipeline.PNG) | ![Feedback](Screenshots/Feedback.PNG) |
 
-### Mentors & Investors Directory
-
+### 🤝 Mentors & Investors Directory
 | Mentors | Investors |
-|---|---|
+|:---:|:---:|
 | ![Mentors](Screenshots/Mentors.PNG) | ![Investors](Screenshots/Investors.PNG) |
 
-### Community, Finance & Notifications
-
+### 👥 Community, Finance & Notifications
 | Community | Finance | Notifications |
-|---|---|---|
+|:---:|:---:|:---:|
 | ![Community](Screenshots/Community_page.PNG) | ![Finance](Screenshots/Finance.PNG) | ![Notifications](Screenshots/Notification.PNG) |
 
-### Management & Activities
-
+### 🛠️ Management & Activities
 | Manage Tags | Activity / Comments | Additional Capture |
-|---|---|---|
+|:---:|:---:|:---:|
 | ![Manage Tags](Screenshots/Manage_tags.PNG) | ![Activity Comments](Screenshots/Activity_Like_Comment.PNG) | ![Capture](Screenshots/Capture.PNG) |
+
+</div>
+
+---
+
+<div align="center">
+
+*Built with ☕ and late-night deploys.*
+
+</div>
