@@ -194,4 +194,4 @@ sudo systemctl reload nginx
 
 ## 🔗 Live Access
 
-🖥️ **Public Load Balancer Endpoint**: Access Incubator Portal
+🖥️ **Public Load Balancer Endpoint**: [Access Incubator Portal](http://incubaotsystem2-775054819.us-east-1.elb.amazonaws.com)
