@@ -136,7 +136,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://98.94.6.13"));
+        // Yahan aapka ELB Load Balancer URL add kar diya gaya hai
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://98.94.6.13",
+                "http://incubatorsystem2-779054019.us-east-1.elb.amazonaws.com"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
