@@ -18,10 +18,15 @@ public class FeedbackController {
         this.feedbackService = feedbackService;
     }
 
-    // Public Testimonials ya Success Wall ke liye public feedbacks fetch karne ka endpoint
     @GetMapping("/public")
     public List<Feedback> getPublicFeedbacks() {
         return feedbackService.getPublicFeedbacks();
+    }
+
+    @GetMapping("/my-feedbacks")
+    @PreAuthorize("isAuthenticated()")
+    public List<Feedback> getMyFeedbacks(Authentication auth) {
+        return feedbackService.getFeedbacksByEmail(auth.getName());
     }
 
     @GetMapping

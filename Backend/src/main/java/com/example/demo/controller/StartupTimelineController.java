@@ -63,10 +63,15 @@ public class StartupTimelineController {
         return ResponseEntity.notFound().build();
     }
 
-    // 6. GET BY STARTUP/IDEA ID
+    // 6. GET BY STARTUP ID (Publicly accessible)
     @GetMapping("/startup/{startupId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STUDENT', 'MENTOR', 'INVESTOR', 'USER', 'ROLE_ADMIN', 'ROLE_STUDENT', 'ROLE_MENTOR', 'ROLE_INVESTOR', 'ROLE_USER')")
     public List<StartupTimeline> getByStartupId(@PathVariable Long startupId, Authentication authentication) {
         return repo.findByIdeaId(startupId);
+    }
+
+    // 7. GET BY IDEA ID (Publicly accessible)
+    @GetMapping("/idea/{ideaId}")
+    public List<StartupTimeline> getByIdeaId(@PathVariable Long ideaId, Authentication authentication) {
+        return repo.findByIdeaId(ideaId);
     }
 }

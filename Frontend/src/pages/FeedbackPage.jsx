@@ -71,7 +71,7 @@ const FeedbackPage = () => {
     };
 
     const handleTogglePublic = async (feedback) => {
-        if (userRole !== 'ADMIN') return; // Sirf admin kar sake
+        if (userRole !== 'ADMIN') return;
         const updatedStatus = !feedback.isPublic;
 
         // Optimistic UI update
@@ -101,7 +101,7 @@ const FeedbackPage = () => {
     };
 
     const handleDeleteFeedback = async (id) => {
-        if (userRole !== 'ADMIN') return; // Sirf admin delete kar sake
+        if (userRole !== 'ADMIN') return;
         try {
             await api.delete(`/feedback/${id}`);
             setMessage({ text: 'Feedback deleted successfully!', type: 'success' });
@@ -113,19 +113,21 @@ const FeedbackPage = () => {
     };
 
     const renderAuthorDisplay = (item) => {
+        const emailPrefix = item.createdByEmail ? item.createdByEmail.split('@')[0] : 'Verified Founder';
+
         if (item.comment && item.comment.includes(' - [')) {
             const parts = item.comment.split(' - [');
             const titlePart = parts[1]?.replace(']', '');
             return (
                 <div className="flex flex-col">
-                    <span className="text-xs font-bold text-slate-900">{titlePart}</span>
-                    <span className="text-[10px] text-slate-400 font-medium">{item.createdByEmail ? item.createdByEmail.split('@')[0] : 'Verified Founder'}</span>
+                    <span className="text-xs font-bold text-white">{titlePart}</span>
+                    <span className="text-[10px] text-slate-400 font-medium">{emailPrefix}</span>
                 </div>
             );
         }
         return (
-            <span className="text-xs font-bold text-slate-900">
-                {item.createdByEmail ? item.createdByEmail.split('@')[0] : 'Verified Founder'}
+            <span className="text-xs font-bold text-white">
+                {emailPrefix}
             </span>
         );
     };
@@ -134,34 +136,35 @@ const FeedbackPage = () => {
     const isAdmin = userRole === 'ADMIN';
 
     return (
-        <div className="flex bg-slate-50 min-h-screen">
+        <div className="flex bg-slate-900 min-h-screen text-slate-100 selection:bg-orange-500 selection:text-white">
             <Sidebar />
-            <main className="flex-1 p-10">
-                <header className="mb-8 flex items-center justify-between">
+            <main className="flex-1 p-10 overflow-y-auto">
+                <header className="mb-8 flex items-center justify-between bg-slate-800/40 border border-slate-800/80 p-6 rounded-3xl backdrop-blur-xl">
                     <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
+                        <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
                             <Star className="text-orange-500 fill-orange-500" size={32} /> Success Stories & Feedback
                         </h1>
-                        <p className="text-slate-500 mt-1">Discover what founders say about our incubation system or share your experience.</p>
+                        <p className="text-slate-400 text-sm mt-1">Discover what founders say about our incubation system or share your experience.</p>
                     </div>
 
                     {!isInvestor && (
-                        <div className="flex bg-slate-200/70 p-1.5 rounded-2xl gap-1">
+                        <div className="flex bg-slate-800 p-1.5 rounded-2xl gap-1 border border-slate-700/80">
                             <button
                                 onClick={() => setActiveTab('public')}
-                                className={`px-5 py-2 rounded-xl text-xs font-bold transition ${
-                                    activeTab === 'public' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                                className={`px-5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                    activeTab === 'public' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-slate-400 hover:text-white'
                                 }`}
                             >
                                 Public Wall
                             </button>
                             <button
                                 onClick={() => setActiveTab('manage')}
-                                className={`px-5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                                    activeTab === 'manage' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                                className={`px-5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                    activeTab === 'manage' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-slate-400 hover:text-white'
                                 }`}
                             >
-                                <ShieldCheck size={14} className="text-orange-500" /> {isAdmin ? 'Admin Moderation & Submit' : 'Submit Feedback'}
+                                <ShieldCheck size={14} className={activeTab === 'manage' ? 'text-white' : 'text-orange-400'} />
+                                {isAdmin ? 'Admin Moderation & Submit' : 'Submit Feedback'}
                             </button>
                         </div>
                     )}
@@ -171,105 +174,107 @@ const FeedbackPage = () => {
                     {message.text && (
                         <div className={`p-4 rounded-2xl text-sm font-medium border ${
                             message.type === 'success'
-                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                : 'bg-rose-50 text-rose-600 border-rose-100'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                         }`}>
                             {message.text}
                         </div>
                     )}
 
                     <div className="space-y-6">
-                        <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-3xl p-8 text-white shadow-md">
+                        <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-3xl p-8 text-white shadow-xl shadow-orange-500/10 border border-orange-400/20">
                             <h2 className="text-2xl font-black">Trusted by Innovative Founders</h2>
                             <p className="text-orange-100 text-sm mt-1">Here is how our incubation platform empowers startup journeys and drives success.</p>
                         </div>
 
-                        {loading ? (
-                            <p className="text-slate-500 text-center py-10 animate-pulse">Loading public testimonials...</p>
-                        ) : publicFeedbacks.length === 0 ? (
-                            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-sm">
-                                <Star className="mx-auto text-slate-300 mb-3" size={48} />
-                                <p className="text-slate-500 font-medium">No public success stories published yet.</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {publicFeedbacks.map((item) => (
-                                    <div key={item.feedbackId} className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition">
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-1 text-amber-400">
-                                                {[...Array(item.rating)].map((_, i) => (
-                                                    <Star key={i} size={16} className="fill-amber-400" />
-                                                ))}
+                        {activeTab === 'public' && (
+                            loading ? (
+                                <p className="text-slate-500 text-center py-10 animate-pulse">Loading public testimonials...</p>
+                            ) : publicFeedbacks.length === 0 ? (
+                                <div className="bg-slate-800/50 rounded-3xl border border-slate-800 p-12 text-center shadow-xl backdrop-blur-xl">
+                                    <Star className="mx-auto text-slate-600 mb-3" size={48} />
+                                    <p className="text-slate-400 font-medium">No public success stories published yet.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {publicFeedbacks.map((item) => (
+                                        <div key={item.feedbackId} className="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4 transition">
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-1 text-amber-400">
+                                                    {[...Array(item.rating || 5)].map((_, i) => (
+                                                        <Star key={i} size={16} className="fill-amber-400" />
+                                                    ))}
+                                                </div>
+                                                <p className="text-slate-300 text-sm italic">
+                                                    "{item.comment ? item.comment.split(' - [')[0] : item.comment}"
+                                                </p>
                                             </div>
-                                            <p className="text-slate-700 text-sm italic">
-                                                "{item.comment ? item.comment.split(' - [')[0] : item.comment}"
-                                            </p>
+                                            <div className="pt-4 border-t border-slate-700/60 flex items-center justify-between">
+                                                {renderAuthorDisplay(item)}
+                                                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full font-bold border border-emerald-500/20">Verified Review</span>
+                                            </div>
                                         </div>
-                                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                                            {renderAuthorDisplay(item)}
-                                            <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-bold border border-emerald-100">Verified Review</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )
                         )}
                     </div>
 
                     {!isInvestor && activeTab === 'manage' && (
-                        <div className="space-y-8 pt-6">
-                            {/* Submit Feedback Form - Visible to all non-investors */}
-                            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-                                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                        <div className="space-y-8 pt-2">
+                            {/* Submit Feedback Form */}
+                            <div className="bg-slate-800/50 rounded-3xl border border-slate-800 p-8 shadow-xl backdrop-blur-xl space-y-5">
+                                <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
                                     <MessageSquare size={20} className="text-orange-500" /> Share Your Incubation Experience
                                 </h3>
                                 <form onSubmit={handleSubmitFeedback} className="space-y-4">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Your Name & Company Title</label>
+                                        <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Your Name & Company Title</label>
                                         <input
                                             type="text"
                                             placeholder="Enter your name and startup/company title..."
                                             value={authorTitle}
                                             onChange={(e) => setAuthorTitle(e.target.value)}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                            className="w-full px-5 py-3.5 bg-slate-900 border border-slate-700/80 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition font-semibold"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Rating (1 to 5 Stars)</label>
+                                        <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Rating (1 to 5 Stars)</label>
                                         <select
                                             value={rating}
                                             onChange={(e) => setRating(Number(e.target.value))}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                                            className="w-full px-5 py-3.5 bg-slate-900 border border-slate-700/80 rounded-2xl text-xs font-semibold text-white focus:outline-none focus:border-orange-500 transition"
                                         >
-                                            <option value={5}>⭐⭐⭐⭐⭐ (5 - Exceptional)</option>
-                                            <option value={4}>⭐⭐⭐⭐ (4 - Very Good)</option>
-                                            <option value={3}>⭐⭐⭐ (3 - Good)</option>
-                                            <option value={2}>⭐⭐ (2 - Fair)</option>
-                                            <option value={1}>⭐ (1 - Poor)</option>
+                                            <option value={5} className="bg-slate-900 text-white">⭐⭐⭐⭐⭐ (5 - Exceptional)</option>
+                                            <option value={4} className="bg-slate-900 text-white">⭐⭐⭐⭐ (4 - Very Good)</option>
+                                            <option value={3} className="bg-slate-900 text-white">⭐⭐⭐ (3 - Good)</option>
+                                            <option value={2} className="bg-slate-900 text-white">⭐⭐ (2 - Fair)</option>
+                                            <option value={1} className="bg-slate-900 text-white">⭐ (1 - Poor)</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 mb-1">Your Review / Testimonial</label>
+                                        <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Your Review / Testimonial</label>
                                         <textarea
-                                            rows={3}
+                                            rows={4}
                                             placeholder="Write about your journey and experience..."
                                             value={comment}
                                             onChange={(e) => setComment(e.target.value)}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                                            className="w-full px-5 py-3.5 bg-slate-900 border border-slate-700/80 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition font-semibold"
                                         />
                                     </div>
                                     <button
                                         type="submit"
-                                        className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm"
+                                        className="px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 cursor-pointer"
                                     >
-                                        <Send size={14} /> Submit Feedback
+                                        <Send size={16} /> Submit Feedback
                                     </button>
                                 </form>
                             </div>
 
-                            {/* Admin Feedback Moderation - Visible ONLY if userRole is ADMIN */}
+                            {/* Admin Feedback Moderation */}
                             {isAdmin && (
-                                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-                                    <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                                <div className="bg-slate-800/50 rounded-3xl border border-slate-800 p-8 shadow-xl backdrop-blur-xl space-y-5">
+                                    <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
                                         <ShieldCheck size={20} className="text-orange-500" /> Admin Feedback Moderation
                                     </h3>
                                     <div className="space-y-3 pt-2">
@@ -277,27 +282,27 @@ const FeedbackPage = () => {
                                             <p className="text-xs text-slate-400">No feedbacks submitted in the system yet.</p>
                                         ) : (
                                             feedbacks.map((item) => (
-                                                <div key={item.feedbackId} className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 flex items-center justify-between gap-4">
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-bold text-slate-900">{item.createdByEmail}</span>
-                                                            <span className="text-amber-500 text-xs">{'⭐'.repeat(item.rating)}</span>
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                                                                item.isPublic ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'
+                                                <div key={item.feedbackId} className="p-5 bg-slate-900/80 rounded-2xl border border-slate-700/80 flex items-center justify-between gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-xs font-bold text-white">{item.createdByEmail}</span>
+                                                            <span className="text-amber-400 text-xs">{'⭐'.repeat(item.rating || 5)}</span>
+                                                            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                                                                item.isPublic ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'
                                                             }`}>
                                                                 {item.isPublic ? 'Publicly Visible' : 'Private'}
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-slate-600 italic">"{item.comment}"</p>
+                                                        <p className="text-xs text-slate-300 italic">"{item.comment}"</p>
                                                     </div>
 
                                                     <div className="flex items-center gap-2 shrink-0">
                                                         <button
                                                             onClick={() => handleTogglePublic(item)}
-                                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                                                            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                                                                 item.isPublic
-                                                                    ? 'bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100'
-                                                                    : 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100'
+                                                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
+                                                                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
                                                             }`}
                                                         >
                                                             {item.isPublic ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -305,7 +310,8 @@ const FeedbackPage = () => {
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteFeedback(item.feedbackId)}
-                                                            className="p-2 text-slate-400 hover:text-rose-600 transition rounded-xl hover:bg-rose-50"
+                                                            className="p-2.5 text-slate-400 hover:text-rose-400 transition rounded-xl hover:bg-rose-500/10 cursor-pointer"
+                                                            title="Delete Feedback"
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>

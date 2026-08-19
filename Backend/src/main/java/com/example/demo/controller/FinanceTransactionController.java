@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/finance-transactions")
+@RequestMapping({"/api/finance-transactions", "/api/finance/transactions"})
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class FinanceTransactionController {
 
     @Autowired
@@ -20,8 +21,9 @@ public class FinanceTransactionController {
     @Autowired
     private FinanceTransactionRepository transactionRepo;
 
+    // Fixed: hasAuthority use kiya hai taake token role mismatch na ho
     @PostMapping("/project/{projectId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'STUDENT', 'ROLE_STUDENT')")
     public FinanceTransaction add(@RequestBody FinanceTransaction t,
                                   @PathVariable Long projectId,
                                   Authentication auth) {
@@ -29,13 +31,13 @@ public class FinanceTransactionController {
     }
 
     @GetMapping("/by-project/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'INVESTOR', 'ROLE_INVESTOR', 'MENTOR', 'ROLE_MENTOR', 'STUDENT', 'ROLE_STUDENT')")
     public List<FinanceTransaction> getByProject(@PathVariable Long id) {
         return service.getByProjectId(id);
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'INVESTOR', 'MENTOR', 'STUDENT')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'INVESTOR', 'ROLE_INVESTOR', 'MENTOR', 'ROLE_MENTOR', 'STUDENT', 'ROLE_STUDENT')")
     public List<FinanceTransaction> getAll(Authentication authentication) {
         List<FinanceTransaction> list = service.getAllTransactions();
 
@@ -63,14 +65,14 @@ public class FinanceTransactionController {
     }
 
     @GetMapping("/project/{projectId}/type/{type}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'INVESTOR', 'ROLE_INVESTOR', 'MENTOR', 'ROLE_MENTOR', 'STUDENT', 'ROLE_STUDENT')")
     public List<FinanceTransaction> getByType(@PathVariable Long projectId,
                                               @PathVariable String type) {
         return transactionRepo.findByFinanceProject_IdAndType(projectId, type);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN') or @securityService.isTransactionOwner(#id, authentication)")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<FinanceTransaction> update(@PathVariable Long id,
                                                      @RequestBody FinanceTransaction t,
                                                      Authentication auth) {
@@ -79,7 +81,7 @@ public class FinanceTransactionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN') or @securityService.isTransactionOwner(#id, authentication)")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<String> delete(@PathVariable Long id,
                                          Authentication auth) {
         service.deleteTransaction(id, auth);

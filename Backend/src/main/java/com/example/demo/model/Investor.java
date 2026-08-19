@@ -27,7 +27,7 @@ public class Investor {
     @JoinColumn(name = "user_id")
     private User user;
 
-    // Direct Relationship with Incubation (Startups)
+    // Direct Relationship with Incubation (Startups) via Join Table
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "investor_incubations",
@@ -86,7 +86,7 @@ public class Investor {
         this.incubations = incubations;
     }
 
-    // Helper method to keep code compatibility if projects list is referenced elsewhere
+    // Helper method for project titles compatibility
     public List<String> getProjects() {
         if (incubations == null) return new ArrayList<>();
         return incubations.stream()
@@ -95,13 +95,21 @@ public class Investor {
     }
 
     public void setProjects(List<String> projectNames) {
-        // Yeh sirf compatibility ke liye hai, real mapping incubations ke through hogi
+        // Compatibility setter
     }
 
-    // Fixed getEmail method mapping via User relation
+    // Helper to get email through User relation
     public String getEmail() {
         if (user != null) {
             return user.getEmail();
+        }
+        return null;
+    }
+
+    // Helper to get name through User relation
+    public String getName() {
+        if (user != null) {
+            return user.getName();
         }
         return null;
     }

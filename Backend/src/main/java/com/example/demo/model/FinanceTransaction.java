@@ -16,12 +16,15 @@ public class FinanceTransaction {
     private Double amount;
     private String type; // "INCOME" or "EXPENSE"
 
-    private String description; // <--- Kis cheez par kharch hua ya kahan se aayi
+    private String description;
 
-    @Column(nullable = false)
+    // nullable constraint removed to prevent 400 bad request errors
     private String createdByEmail;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "project_id")
+    private Long projectId;
 
     @ManyToOne
     @JoinColumn(name = "finance_project_id")

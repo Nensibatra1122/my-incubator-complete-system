@@ -5,5 +5,11 @@ public enum Role {
     USER,
     STUDENT,
     MENTOR,
-    INVESTOR
+    INVESTOR;
+
+    // Agar aapko string mein convert karna ho toh standard toString ya name() use hota hai,
+    // yahan custom helper method add kar diya gaya hai agar zaroorat ho:
+    public String getValue() {
+        return this.name().toUpperCase();
+    }
 }

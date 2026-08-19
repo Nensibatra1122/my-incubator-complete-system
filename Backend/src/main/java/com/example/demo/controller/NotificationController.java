@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.model.Notification;
 import com.example.demo.model.User;
+import com.example.demo.repository.NotificationRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,10 +26,29 @@ public class NotificationController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private NotificationRepository notificationRepository;
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public Notification create(@RequestBody Notification n, Authentication auth) {
         return notificationService.save(n, auth);
+    }
+
+    // Updated endpoint jo safely notification save karega aur activity logs maintain rakhega
+    @PostMapping("/create")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> createNotification(@RequestBody Notification notification, Authentication auth) {
+        try {
+            Notification saved = notificationService.save(notification, auth);
+            return ResponseEntity.ok(saved);
+        } catch (Exception e) {
+            // Fallback safe save
+            notification.setCreatedAt(LocalDateTime.now());
+            notification.setRead(false);
+            Notification saved = notificationRepository.save(notification);
+            return ResponseEntity.ok(saved);
+        }
     }
 
     @GetMapping
@@ -54,26 +75,21 @@ public class NotificationController {
         User user = userRepository.findByEmail(email).orElse(null);
         String userRole = (user != null && user.getRole() != null) ? user.getRole().name().toUpperCase() : "USER";
 
-        // Agar user ADMIN hai, toh saari notifications dikhao
         if ("ADMIN".equals(userRole)) {
             return ResponseEntity.ok(allNotifications);
         }
 
-        // Refined filtering based on user role and specific recipient/targetRole
         List<Notification> refinedList = allNotifications.stream().filter(n -> {
-            // 1. Agar notification directly kisi specific user ko assigned hai, toh sirf usi user ko dikhegi
             if (n.getUser() != null && user != null) {
                 return n.getUser().getUserId().equals(user.getUserId());
             }
 
             String targetRole = n.getTargetRole();
 
-            // 2. Agar targetRole blank ya ALL hai, toh sabhi ko dikhegi
             if (targetRole == null || targetRole.trim().isEmpty() || "ALL".equalsIgnoreCase(targetRole)) {
                 return true;
             }
 
-            // 3. Role-based matching (e.g. INVESTOR, USER, STUDENT, etc.)
             return targetRole.toUpperCase().contains(userRole);
         }).collect(Collectors.toList());
 

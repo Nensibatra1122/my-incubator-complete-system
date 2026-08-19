@@ -3,9 +3,11 @@ package com.example.demo.service;
 import com.example.demo.model.ActivityLog;
 import com.example.demo.model.FinanceProject;
 import com.example.demo.model.FinanceTransaction;
+import com.example.demo.model.Incubation;
 import com.example.demo.repository.ActivityLogRepository;
 import com.example.demo.repository.FinanceProjectRepository;
 import com.example.demo.repository.FinanceTransactionRepository;
+import com.example.demo.repository.IncubationRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -23,15 +25,37 @@ public class FinanceService {
     private FinanceProjectRepository projectRepository;
 
     @Autowired
+    private IncubationRepository incubationRepository;
+
+    @Autowired
     private ActivityLogRepository activityLogRepository;
 
     @Autowired
     private UserRepository userRepository;
 
     @Transactional
-    public FinanceTransaction addTransaction(FinanceTransaction t, Long projectId, Authentication auth) {
-        FinanceProject project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
+    public FinanceTransaction addTransaction(FinanceTransaction t, Long incubationId, Authentication auth) {
+
+        // Incubation table se project fetch ya create karein aur asal programName uthayein
+        FinanceProject project = projectRepository.findByStartupId(incubationId)
+                .orElseGet(() -> {
+                    FinanceProject newProj = new FinanceProject();
+                    newProj.setStartupId(incubationId);
+
+                    Incubation inc = incubationRepository.findById(incubationId).orElse(null);
+                    if (inc != null) {
+                        String startupName = (inc.getProgramName() != null && !inc.getProgramName().trim().isEmpty())
+                                ? inc.getProgramName()
+                                : "Startup #" + incubationId;
+
+                        newProj.setTitle(startupName);
+                        newProj.setBudget(inc.getFunding() != null ? inc.getFunding() : 0.0);
+                    } else {
+                        newProj.setTitle("Startup #" + incubationId);
+                        newProj.setBudget(0.0);
+                    }
+                    return projectRepository.save(newProj);
+                });
 
         double currentBudget = project.getBudget() != null ? project.getBudget() : 0.0;
         double newBudget;
@@ -46,6 +70,8 @@ public class FinanceService {
         projectRepository.save(project);
 
         t.setFinanceProject(project);
+        t.setProjectId(project.getId());
+
         String email = (auth != null) ? auth.getName() : "System";
         t.setCreatedByEmail(email);
 
@@ -62,14 +88,34 @@ public class FinanceService {
             }
             activityLogRepository.save(log);
         } catch (Exception e) {
-            // Ignore log exception so main transaction doesn't fail
+            // Ignore log exception
         }
 
         return savedTransaction;
     }
 
-    public List<FinanceTransaction> getByProjectId(Long id) {
-        return repo.findByFinanceProjectId(id);
+    public List<FinanceTransaction> getByProjectId(Long incubationId) {
+        FinanceProject project = projectRepository.findByStartupId(incubationId)
+                .orElseGet(() -> {
+                    FinanceProject newProj = new FinanceProject();
+                    newProj.setStartupId(incubationId);
+
+                    Incubation inc = incubationRepository.findById(incubationId).orElse(null);
+                    if (inc != null) {
+                        String startupName = (inc.getProgramName() != null && !inc.getProgramName().trim().isEmpty())
+                                ? inc.getProgramName()
+                                : "Startup #" + incubationId;
+
+                        newProj.setTitle(startupName);
+                        newProj.setBudget(inc.getFunding() != null ? inc.getFunding() : 0.0);
+                    } else {
+                        newProj.setTitle("Startup #" + incubationId);
+                        newProj.setBudget(0.0);
+                    }
+                    return projectRepository.save(newProj);
+                });
+
+        return repo.findByFinanceProjectId(project.getId());
     }
 
     public List<FinanceTransaction> getAllTransactions() {

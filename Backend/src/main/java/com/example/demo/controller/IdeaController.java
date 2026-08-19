@@ -2,27 +2,28 @@ package com.example.demo.controller;
 
 import com.example.demo.model.Idea;
 import com.example.demo.model.Incubation;
-import com.example.demo.service.IdeaService;
+import com.example.demo.model.Mentor;
+import com.example.demo.model.Investor;
 import com.example.demo.repository.IdeaRepository;
 import com.example.demo.repository.IncubationRepository;
+import com.example.demo.repository.MentorRepository;
+import com.example.demo.repository.InvestorRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/ideas")
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = "*")
 public class IdeaController {
-
-    @Autowired
-    private IdeaService ideaService;
 
     @Autowired
     private IdeaRepository ideaRepository;
@@ -30,119 +31,132 @@ public class IdeaController {
     @Autowired
     private IncubationRepository incubationRepository;
 
-    @PostMapping
-    @PreAuthorize("isAuthenticated()")
-    public Idea createIdea(@RequestBody Idea idea, Authentication auth) {
-        return ideaService.createIdea(idea, auth);
-    }
+    @Autowired
+    private MentorRepository mentorRepository;
 
+    @Autowired
+    private InvestorRepository investorRepository;
+
+    // Get all ideas endpoint
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
-    public List<Idea> getAllIdeas() {
-        return ideaRepository.findAll();
+    public ResponseEntity<?> getAllIdeas() {
+        return ResponseEntity.ok(ideaRepository.findAll());
     }
 
-    @GetMapping("/{id}")
+    // Get logged-in user's ideas endpoint (Fixes the 500 error)
+    @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Idea> getIdeaById(@PathVariable Long id) {
-        return ideaService.getIdeaById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('STUDENT') or hasRole('ADMIN')")
-    public ResponseEntity<Idea> updateIdea(@PathVariable Long id,
-                                           @RequestBody Idea ideaDetails,
-                                           Authentication auth) {
-        return ResponseEntity.ok(ideaService.updateIdea(id, ideaDetails, auth));
-    }
-
-    @PutMapping("/{id}/status")
-    @PreAuthorize("isAuthenticated()")
-    @Transactional
-    public ResponseEntity<?> updateIdeaStatus(@PathVariable String id, @RequestBody Map<String, Object> requestMap) {
-        try {
-            Long ideaId;
-            try {
-                String cleanId = id.split(":")[0];
-                ideaId = Long.parseLong(cleanId);
-            } catch (Exception e) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid Idea ID format"));
-            }
-
-            Optional<Idea> optionalIdea = ideaRepository.findById(ideaId);
-
-            if (optionalIdea.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Idea idea = optionalIdea.get();
-            String newStatus = (String) requestMap.get("status");
-
-            if (newStatus == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Status cannot be null"));
-            }
-
-            if ("REJECTED".equals(newStatus)) {
-                try {
-                    Incubation inc = incubationRepository.findByIdeaId(ideaId);
-                    if (inc != null) {
-                        incubationRepository.delete(inc);
-                    }
-                } catch (Exception e) {}
-
-                idea.setStatus("REJECTED");
-                ideaRepository.save(idea);
-                return ResponseEntity.ok(Map.of("message", "Idea status updated to REJECTED successfully."));
-            }
-            else if ("ACCEPTED".equals(newStatus)) {
-                Incubation existingIncubation = incubationRepository.findByIdeaId(ideaId);
-
-                if ("ACCEPTED".equalsIgnoreCase(idea.getStatus()) || existingIncubation != null) {
-                    if (!"ACCEPTED".equalsIgnoreCase(idea.getStatus())) {
-                        idea.setStatus("ACCEPTED");
-                        ideaRepository.save(idea);
-                    }
-                    return ResponseEntity.ok(Map.of("message", "It's already accepted."));
-                }
-
-                if (idea.getSubmitterName() == null || idea.getSubmitterName().trim().isEmpty()) {
-                    idea.setSubmitterName("Nensi Batra");
-                }
-
-                idea.setStatus(newStatus);
-                ideaRepository.save(idea);
-
-                Incubation incubation = new Incubation();
-                incubation.setProgramName(idea.getTitle() != null ? idea.getTitle() : "Default Program");
-                incubation.setDescription(idea.getDescription() != null ? idea.getDescription() : "No Description");
-                incubation.setStatus("Active");
-                incubation.setStartDate(LocalDate.now());
-                incubation.setIdea(idea);
-
-                incubationRepository.saveAndFlush(incubation);
-
-                return ResponseEntity.ok(Map.of("message", "Idea accepted and successfully moved to Incubated Startups!"));
-            }
-            else {
-                if (idea.getSubmitterName() == null || idea.getSubmitterName().trim().isEmpty()) {
-                    idea.setSubmitterName("Nensi Batra");
-                }
-                idea.setStatus(newStatus);
-                ideaRepository.save(idea);
-                return ResponseEntity.ok(Map.of("message", "Idea status updated successfully to " + newStatus));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+    public ResponseEntity<?> getMyIdeas(Authentication auth) {
+        if (auth == null || auth.getName() == null) {
+            return ResponseEntity.badRequest().body("User not authenticated");
         }
+        String email = auth.getName();
+        var userIdeas = ideaRepository.findAll().stream()
+                .filter(idea -> idea.getCreatedByEmail() != null && idea.getCreatedByEmail().equalsIgnoreCase(email))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(userIdeas);
     }
 
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('STUDENT') or hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteIdea(@PathVariable Long id, Authentication auth) {
-        ideaService.deleteIdea(id, auth);
-        return ResponseEntity.noContent().build();
+    // Get a single idea by ID
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getIdeaById(@PathVariable Long id) {
+        Optional<Idea> optionalIdea = ideaRepository.findById(id);
+        if (!optionalIdea.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(optionalIdea.get());
+    }
+
+    // Create a new idea endpoint
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'STUDENT', 'USER', 'MENTEE', 'ROLE_ADMIN', 'ROLE_STUDENT', 'ROLE_USER', 'ROLE_MENTEE')")
+    public ResponseEntity<?> createIdea(@RequestBody Idea idea, Authentication auth) {
+        if ((idea.getCreatedByEmail() == null || idea.getCreatedByEmail().isEmpty()) && auth != null) {
+            idea.setCreatedByEmail(auth.getName());
+        }
+
+        if (idea.getStatus() == null || idea.getStatus().isEmpty()) {
+            idea.setStatus("PENDING");
+        }
+
+        // Fix: Automatically set submission date to current date if not provided
+        if (idea.getSubmissionDate() == null) {
+            idea.setSubmissionDate(LocalDate.now());
+        }
+
+        Idea savedIdea = ideaRepository.save(idea);
+        return ResponseEntity.ok(savedIdea);
+    }
+
+    // Idea Status Update Endpoint (With Mentor & Investor Assignment Logic)
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateIdeaStatus(@PathVariable Long id, @RequestBody Map<String, Object> requestMap) {
+        Optional<Idea> optionalIdea = ideaRepository.findById(id);
+        if (!optionalIdea.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Idea idea = optionalIdea.get();
+
+        if (requestMap.containsKey("status") && requestMap.get("status") != null) {
+            String newStatus = requestMap.get("status").toString();
+
+            idea.setStatus(newStatus);
+
+            if ("ACCEPTED".equalsIgnoreCase(newStatus)) {
+                Incubation incubation = incubationRepository.findByIdea_IdeaId(id)
+                        .orElseGet(() -> {
+                            return incubationRepository.findAll().stream()
+                                    .filter(inc -> inc.getIdea() != null &&
+                                            (inc.getIdea().getId() == id || inc.getIdea().getIdeaId() == id))
+                                    .findFirst()
+                                    .orElse(new Incubation());
+                        });
+
+                if (incubation.getIdea() == null) {
+                    incubation.setIdea(idea);
+                }
+
+                if (incubation.getProgramName() == null || incubation.getProgramName().isEmpty()) {
+                    incubation.setProgramName(idea.getTitle());
+                }
+
+                if (incubation.getCategory() == null || incubation.getCategory().isEmpty()) {
+                    incubation.setCategory(idea.getTagName());
+                }
+
+                if (incubation.getStartDate() == null) {
+                    incubation.setStartDate(LocalDate.now());
+                }
+
+                // Mentor Mapping Logic Fixed
+                if (requestMap.containsKey("mentorId") && requestMap.get("mentorId") != null && !requestMap.get("mentorId").toString().isEmpty()) {
+                    try {
+                        Long mentorId = Long.valueOf(requestMap.get("mentorId").toString());
+                        Mentor mentorObj = mentorRepository.findById(mentorId).orElse(null);
+                        if (mentorObj != null) {
+                            incubation.setMentor(mentorObj);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                // Investor Mapping Logic
+                if (requestMap.containsKey("investorId") && requestMap.get("investorId") != null && !requestMap.get("investorId").toString().isEmpty()) {
+                    try {
+                        Long investorId = Long.valueOf(requestMap.get("investorId").toString());
+                        Investor investor = investorRepository.findById(investorId).orElse(null);
+                        if (investor != null) {
+                            incubation.setInvestor(investor);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                incubationRepository.save(incubation);
+            }
+        }
+
+        ideaRepository.save(idea);
+        return ResponseEntity.ok(idea);
     }
 }

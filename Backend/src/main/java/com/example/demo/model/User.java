@@ -51,4 +51,9 @@ public class User {
     public String getName() {
         return this.fullName;
     }
+
+    // Refined getUserName method returning fullName
+    public String getUserName() {
+        return this.fullName;
+    }
 }

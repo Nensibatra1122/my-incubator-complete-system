@@ -33,7 +33,7 @@ public class ProfileController {
                     .orElse(null);
 
             if (existingProfile != null) {
-                existingProfile.setFullName(profileDetails.getFullName());
+                existingProfile.setFullName(profileDetails.getFullName() != null ? profileDetails.getFullName() : user.getFullName());
                 existingProfile.setBio(profileDetails.getBio());
                 existingProfile.setLinkedInUrl(profileDetails.getLinkedInUrl());
                 existingProfile.setGithubUrl(profileDetails.getGithubUrl());
@@ -43,6 +43,9 @@ public class ProfileController {
                 return ResponseEntity.ok(profileRepository.save(existingProfile));
             } else {
                 profileDetails.setUser(user);
+                if (profileDetails.getFullName() == null || profileDetails.getFullName().trim().isEmpty()) {
+                    profileDetails.setFullName(user.getFullName());
+                }
                 Profile saved = profileRepository.save(profileDetails);
                 return ResponseEntity.ok(saved);
             }
@@ -61,11 +64,24 @@ public class ProfileController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Profile> getCurrentProfile(Authentication authentication) {
         String email = authentication.getName();
-        return profileRepository.findAll().stream()
-                .filter(p -> p.getUser() != null && p.getUser().getEmail().equals(email))
-                .findFirst()
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.ok(new Profile()));
+
+        return userRepository.findByEmail(email).map(user -> {
+            Profile profile = profileRepository.findAll().stream()
+                    .filter(p -> p.getUser() != null && p.getUser().getId().equals(user.getId()))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        Profile newProfile = new Profile();
+                        newProfile.setFullName(user.getFullName());
+                        newProfile.setUser(user);
+                        return newProfile;
+                    });
+
+            if (profile.getFullName() == null || profile.getFullName().trim().isEmpty()) {
+                profile.setFullName(user.getFullName());
+            }
+
+            return ResponseEntity.ok(profile);
+        }).orElseGet(() -> ResponseEntity.badRequest().build());
     }
 
     // UPDATE: Specific ID wali profile update karna

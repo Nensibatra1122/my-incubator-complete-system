@@ -59,6 +59,16 @@ public class UserService implements UserDetailsService {
         return repository.findAll();
     }
 
+    // Naya method jo Controller ke /role/{role} endpoint ke liye zaroori hai
+    public List<User> getUsersByRole(String role) {
+        try {
+            Role enumRole = Role.valueOf(role.toUpperCase());
+            return repository.findByRole(enumRole);
+        } catch (IllegalArgumentException e) {
+            return Collections.emptyList();
+        }
+    }
+
     public Optional<User> getUserById(long id) {
         return repository.findById(id);
     }

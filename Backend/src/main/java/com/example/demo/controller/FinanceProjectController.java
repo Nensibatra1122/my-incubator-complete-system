@@ -12,7 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/finance-projects")
+@RequestMapping({"/api/finance-projects", "/api/finance", "/api/finances"})
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class FinanceProjectController {
 
     @Autowired
@@ -25,18 +26,28 @@ public class FinanceProjectController {
         return ResponseEntity.ok(list);
     }
 
-    @GetMapping("/{id}/total-expense")
+    @GetMapping("/{idParam}/total-expense")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ProjectExpenseDTO> getTotalExpense(@PathVariable Long id) {
-        return ResponseEntity.ok(projectService.getExpenseByProjectId(id));
+    public ResponseEntity<ProjectExpenseDTO> getTotalExpense(@PathVariable String idParam) {
+        try {
+            Long id = Long.parseLong(idParam.split(":")[0]);
+            return ResponseEntity.ok(projectService.getExpenseByProjectId(id));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{idParam}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<FinanceProject> getById(@PathVariable Long id) {
-        return projectService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<FinanceProject> getById(@PathVariable String idParam) {
+        try {
+            Long id = Long.parseLong(idParam.split(":")[0]);
+            return projectService.findById(id)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping
@@ -64,7 +75,6 @@ public class FinanceProjectController {
             return list;
         }
 
-        // Updated filter: Agar createdByEmail null bhi ho (jese purane projects mein hai), toh unhein bhi show hone dein
         return list.stream()
                 .filter(p -> {
                     String createdBy = p.getCreatedByEmail() != null ? p.getCreatedByEmail().toLowerCase() : "";
@@ -74,16 +84,26 @@ public class FinanceProjectController {
                 .toList();
     }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN') or @securityService.isProjectOwner(#id, authentication)")
-    public ResponseEntity<FinanceProject> update(@PathVariable Long id, @RequestBody FinanceProject p) {
-        return projectService.update(id, p);
+    @PutMapping("/{idParam}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<FinanceProject> update(@PathVariable String idParam, @RequestBody FinanceProject p) {
+        try {
+            Long id = Long.parseLong(idParam.split(":")[0]);
+            return projectService.update(id, p);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        projectService.delete(id);
-        return ResponseEntity.noContent().build();
+    @DeleteMapping("/{idParam}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> delete(@PathVariable String idParam) {
+        try {
+            Long id = Long.parseLong(idParam.split(":")[0]);
+            projectService.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

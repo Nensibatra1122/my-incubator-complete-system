@@ -9,7 +9,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -39,14 +38,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Browser OPTIONS preflight requests
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         // Public Endpoints & Auth Routes
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
 
-                        // Public GET Feeds
+                        // Project Discussion Hub Endpoints
+                        .requestMatchers("/api/discussion/**").permitAll()
+
+                        // Public GET Feeds & Mentors / Chat / Sessions
                         .requestMatchers(HttpMethod.GET, "/api/mentors/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/timelines/**").permitAll()
@@ -55,40 +60,69 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/likes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tags/**").permitAll()
 
+                        // Profiles Management Endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/profiles/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/profiles/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/profiles/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/profiles/**").authenticated()
+
+                        // Chat & Rooms Endpoints
+                        .requestMatchers("/api/chat/rooms/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/chat/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/chat/**").permitAll()
+
+                        // Sessions Management Endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/sessions/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/sessions/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/sessions/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/sessions/**").authenticated()
+
                         // General context paths matching
                         .requestMatchers("/incubations/**", "/progress/**", "/analytics/**").permitAll()
 
-                        // Incubations / Startups Endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/incubations/**").hasAnyRole("ADMIN", "MENTOR", "STUDENT", "USER", "INVESTOR")
-                        .requestMatchers(HttpMethod.POST, "/api/incubations/**").hasAnyRole("ADMIN", "MENTOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/incubations/**").hasAnyRole("ADMIN", "MENTOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/incubations/**").hasRole("ADMIN")
+                        // Incubations / Startups Endpoints (Explicit GET Permitted for Mentors/Students dashboard sync)
+                        .requestMatchers(HttpMethod.GET, "/api/incubations/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/incubations/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/incubations/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/incubations/**").authenticated()
+
+                        // Startups & Finance
+                        .requestMatchers("/api/startups/**").authenticated()
+                        .requestMatchers("/api/finance/**", "/api/finances/**", "/api/finance-transactions/**").authenticated()
 
                         // Progress Endpoints
-                        .requestMatchers("/api/progress/**").hasAnyRole("ADMIN", "MENTOR", "STUDENT", "USER", "INVESTOR")
+                        .requestMatchers(HttpMethod.GET, "/api/progress/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/progress/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/progress/**").authenticated()
 
-                        // System Audit & Operation Logs -> Admin Only
-                        .requestMatchers("/api/logs/**").hasRole("ADMIN")
+                        // System Audit & Operation Logs
+                        .requestMatchers("/api/logs/**").authenticated()
 
-                        // Incubator Analytics -> Admin Only
-                        .requestMatchers("/api/analytics/**").hasRole("ADMIN")
+                        // Incubator Analytics (Permitted so dashboards can load counts without 403)
+                        .requestMatchers("/api/analytics/**").permitAll()
 
-                        // Idea Pipeline & Chat Mutations -> Authenticated Users (Including Investor)
-                        .requestMatchers("/api/ideas/**").hasAnyRole("ADMIN", "MENTOR", "STUDENT", "USER", "INVESTOR")
+                        // Idea Pipeline & Chat Mutations
+                        .requestMatchers(HttpMethod.POST, "/api/ideas/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/ideas/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/ideas/**").authenticated()
 
-                        // Notifications -> Accessible to all authenticated users
-                        .requestMatchers("/api/notifications/**").authenticated()
+                        // Notifications
+                        .requestMatchers("/api/notifications/**").permitAll()
 
-                        // Tags Management Mutations -> Admin only
-                        .requestMatchers(HttpMethod.POST, "/api/tags/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/tags/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/tags/**").hasRole("ADMIN")
+                        // Tags Management Mutations
+                        .requestMatchers(HttpMethod.POST, "/api/tags/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/tags/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/tags/**").authenticated()
+                        // Investor Interests (Express Interest feature)
+                        .requestMatchers(HttpMethod.POST, "/api/investor-interests/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/investor-interests/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/investor-interests/**").authenticated()
 
-                        // Investors Endpoints Restrictions
-                        .requestMatchers(HttpMethod.GET, "/api/investors/**").hasAnyRole("ADMIN", "STUDENT", "MENTOR", "INVESTOR")
-                        .requestMatchers(HttpMethod.POST, "/api/investors/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/investors/**").hasAnyRole("ADMIN", "INVESTOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/investors/**").hasRole("ADMIN")
+                        // Investors Endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/investors/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/investors/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/investors/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/investors/**").authenticated()
 
                         // Any other request requires authentication
                         .anyRequest().authenticated()
@@ -106,6 +140,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

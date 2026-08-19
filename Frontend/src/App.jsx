@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Register from './pages/Register';
@@ -15,14 +16,16 @@ import IdeaPipeline from './pages/IdeaPipeline';
 import Notifications from './pages/Notifications';
 import ProjectFinance from './pages/ProjectFinance';
 import Profile from './pages/Profile';
-import LikesPage from './pages/LikesPage';
-import CommunityIdeas from './pages/CommunityIdeas';
+import CommunityHub from './pages/CommunityHub.jsx';
 import FeedbackPage from './pages/FeedbackPage';
 import TagsPage from './pages/TagsPage';
 import Mentors from './pages/Mentors';
 import Investors from './pages/Investors';
 import SessionManagement from './pages/SessionManagement';
-import MentorChat from './pages/MentorChat'; // Added MentorChat import
+import MentorChat from './pages/MentorChat';
+import CollaborationHub from './pages/CollaborationHub';
+import MentorBroadcastQnA from './pages/MentorBroadcastQnA';
+import InvestorInterests from './pages/InvestorInterests'; // Import added
 
 function App() {
     return (
@@ -56,12 +59,42 @@ function App() {
                     }
                 />
 
-                {/* Community Ideas Feed Route */}
+                {/* Investor Interests Route */}
+                <Route
+                    path="/investor-interests"
+                    element={
+                        <ProtectedRoute>
+                            <InvestorInterests />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Mentor Q&A & Broadcast Hub Route */}
+                <Route
+                    path="/mentor-broadcast-qna"
+                    element={
+                        <ProtectedRoute>
+                            <MentorBroadcastQnA />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Community Hub Route (Unified Explore & Activity Feed) */}
                 <Route
                     path="/community-ideas"
                     element={
                         <ProtectedRoute>
-                            <CommunityIdeas />
+                            <CommunityHub />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Project Collaboration Hub Route */}
+                <Route
+                    path="/collaboration-hub/:projectId"
+                    element={
+                        <ProtectedRoute>
+                            <CollaborationHub />
                         </ProtectedRoute>
                     }
                 />
@@ -76,9 +109,25 @@ function App() {
                     }
                 />
 
-                {/* Mentor Collaboration Chat Route */}
+                {/* Mentor Collaboration Chat Routes */}
                 <Route
                     path="/mentor-chat"
+                    element={
+                        <ProtectedRoute>
+                            <MentorChat />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/chat"
+                    element={
+                        <ProtectedRoute>
+                            <MentorChat />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/chat/rooms/:id"
                     element={
                         <ProtectedRoute>
                             <MentorChat />
@@ -126,12 +175,12 @@ function App() {
                     }
                 />
 
-                {/* Likes Management Route */}
+                {/* Redirect old /likes route directly to unified /community-ideas hub */}
                 <Route
                     path="/likes"
                     element={
                         <ProtectedRoute>
-                            <LikesPage />
+                            <Navigate to="/community-ideas" replace />
                         </ProtectedRoute>
                     }
                 />

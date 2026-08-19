@@ -7,9 +7,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FinanceProjectRepository extends JpaRepository<FinanceProject, Long> {
+
+    // Incubation / Startup ID ke zariye project dhoondne ke liye (Foreign Key linkage)
+    Optional<FinanceProject> findByStartupId(Long startupId);
 
     @Query("SELECT new com.example.demo.dto.ProjectExpenseDTO(p.title, COALESCE(SUM(e.amount), 0.0), 'Success') " +
             "FROM FinanceTransaction e RIGHT JOIN e.financeProject p GROUP BY p.id, p.title")
@@ -17,4 +21,6 @@ public interface FinanceProjectRepository extends JpaRepository<FinanceProject, 
 
     @Query("SELECT COALESCE(SUM(e.amount), 0.0) FROM FinanceTransaction e WHERE e.financeProject.id = :projectId")
     Double findTotalExpenseByProjectId(@Param("projectId") Long projectId);
+
+    boolean existsByStartupId(Long id);
 }

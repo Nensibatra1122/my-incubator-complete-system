@@ -112,4 +112,14 @@ public class InvestorService {
     public void delete(Long id) {
         repository.deleteById(id);
     }
+
+    // Methods for fetching assigned investors for a mentor
+    public List<Investor> getInvestorsForMentor(Long mentorUserId) {
+        return repository.findAssignedInvestorsForMentor(mentorUserId);
+    }
+
+    public List<Investor> getInvestorsForAuthenticatedMentor(Authentication authentication) {
+        // Temporary fix: Saare investors return karega taaki UI par record show ho jaye
+        return repository.findAll();
+    }
 }

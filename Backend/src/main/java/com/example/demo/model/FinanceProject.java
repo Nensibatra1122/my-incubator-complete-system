@@ -21,19 +21,12 @@ public class FinanceProject {
     private String title;
     private Double budget;
     private String createdByEmail;
-
-    // Mentor email field add kar di gayi hai taake filtering theek se kaam kare
     private String mentorEmail;
+
+    @Column(name = "startup_id")
+    private Long startupId; // Yeh Incubation ki ID (incubationId) ke sath map hoga
 
     @OneToMany(mappedBy = "financeProject", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<FinanceTransaction> transactions;
-
-    public String getMentorEmail() {
-        return mentorEmail;
-    }
-
-    public void setMentorEmail(String mentorEmail) {
-        this.mentorEmail = mentorEmail;
-    }
 }

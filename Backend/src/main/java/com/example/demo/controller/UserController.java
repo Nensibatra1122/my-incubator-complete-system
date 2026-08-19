@@ -30,7 +30,14 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    // 3. READ ONE: Authenticated users
+    // 3. READ USERS BY ROLE: Investor/Admin dropdown ke liye filtered list
+    @GetMapping("/role/{role}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INVESTOR')")
+    public ResponseEntity<List<User>> getUsersByRole(@PathVariable String role) {
+        return ResponseEntity.ok(userService.getUsersByRole(role));
+    }
+
+    // 4. READ ONE: Authenticated users
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STUDENT', 'MENTOR', 'INVESTOR', 'USER')")
     public ResponseEntity<User> getUserById(@PathVariable Long id) {
@@ -39,14 +46,14 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 4. UPDATE: Admin ya sirf wohi user khud apni profile update kare (Secure check)
+    // 5. UPDATE: Admin ya sirf wohi user khud apni profile update kare
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityService.isUserOwner(#id, authentication)")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
         return ResponseEntity.ok(userService.updateUser(id, userDetails));
     }
 
-    // 5. DELETE: Sirf Admin delete kar sake
+    // 6. DELETE: Sirf Admin delete kar sake
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {

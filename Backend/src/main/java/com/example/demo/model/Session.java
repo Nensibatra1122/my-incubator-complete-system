@@ -18,15 +18,18 @@ public class Session {
     @Column(nullable = false)
     private String topic;
 
-    @NotBlank(message = "Mentor email is required")
-    @Column(nullable = false)
+    private Long startupId;
+
+    private Long mentorId;
+
     private String mentorEmail;
 
-    @NotBlank(message = "Mentee email is required")
-    @Column(nullable = false)
     private String menteeEmail;
 
-    // Status ke liye default value "PENDING" set karna sahi rahega
+    // Yahan name="scheduled_time" zaroor add karein taake database ke column se match ho jaye
+    @Column(name = "scheduled_time", nullable = false)
+    private LocalDateTime scheduledTime;
+
     @Column(nullable = false)
     private String status = "PENDING";
 
@@ -35,5 +38,8 @@ public class Session {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = "PENDING";
+        }
     }
 }

@@ -1,53 +1,153 @@
 package com.example.demo.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import lombok.*;
 import java.time.LocalDate;
-import java.util.List;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "ideas")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class Idea {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long ideaId;
 
-    @NotBlank(message = "Title cannot be blank")
     private String title;
 
-    @NotBlank(message = "Description cannot be blank")
-    @Size(min = 50, message = "Proposal description must contain detailed information (at least 50 characters)")
-    @Column(length = 2000)
+    @Column(length = 1000)
     private String description;
 
-    @NotBlank(message = "Submitter name is required")
+    private String status = "PENDING"; // PENDING, ACCEPTED, REJECTED
+
+    private LocalDate submissionDate;
+
     private String submitterName;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Please provide a valid email address")
-    private String createdByEmail;
-
-    private LocalDate submissionDate = LocalDate.now();
-
-    // Tag field added for filtering and display in pipeline
-    private String tagName;
-
-    // Optional field (can be null if not required)
     private Double budget;
 
-    // Proposer fields:
+    private String tagName;
+
+    private String createdByEmail;
+
     private String githubUrl;
+
     private String companyName;
 
-    private String status = "PENDING";
+    // Yeh method automatically database mein insert hone se pehle aaj ki date set kar dega
+    @PrePersist
+    public void prePersist() {
+        if (this.submissionDate == null) {
+            this.submissionDate = LocalDate.now();
+        }
+    }
 
-    @OneToMany(mappedBy = "idea", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonIgnoreProperties("idea")
-    private List<Incubation> incubations;
+    // Constructors
+    public Idea() {}
+
+    public Idea(String title, String description, String submitterName, Double budget, String tagName, String githubUrl, String companyName) {
+        this.title = title;
+        this.description = description;
+        this.submitterName = submitterName;
+        this.budget = budget;
+        this.tagName = tagName;
+        this.githubUrl = githubUrl;
+        this.companyName = companyName;
+        this.submissionDate = LocalDate.now();
+    }
+
+    // Getters and Setters
+    public Long getId() {
+        return ideaId;
+    }
+
+    public void setId(Long ideaId) {
+        this.ideaId = ideaId;
+    }
+
+    public Long getIdeaId() {
+        return ideaId;
+    }
+
+    public void setIdeaId(Long ideaId) {
+        this.ideaId = ideaId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDate getSubmissionDate() {
+        return submissionDate;
+    }
+
+    public void setSubmissionDate(LocalDate submissionDate) {
+        this.submissionDate = submissionDate;
+    }
+
+    public String getSubmitterName() {
+        return submitterName;
+    }
+
+    public void setSubmitterName(String submitterName) {
+        this.submitterName = submitterName;
+    }
+
+    public Double getBudget() {
+        return budget;
+    }
+
+    public void setBudget(Double budget) {
+        this.budget = budget;
+    }
+
+    public String getTagName() {
+        return tagName;
+    }
+
+    public void setTagName(String tagName) {
+        this.tagName = tagName;
+    }
+
+    public String getCreatedByEmail() {
+        return createdByEmail;
+    }
+
+    public void setCreatedByEmail(String createdByEmail) {
+        this.createdByEmail = createdByEmail;
+    }
+
+    public String getGithubUrl() {
+        return githubUrl;
+    }
+
+    public void setGithubUrl(String githubUrl) {
+        this.githubUrl = githubUrl;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
 }

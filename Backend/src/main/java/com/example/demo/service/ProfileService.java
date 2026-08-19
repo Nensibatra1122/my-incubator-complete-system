@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.model.Profile;
+import com.example.demo.model.User;
 import com.example.demo.model.ActivityLog;
 import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.ActivityLogRepository;
@@ -25,6 +26,23 @@ public class ProfileService {
 
     public List<Profile> getAll() {
         return repository.findAll();
+    }
+
+    // Database ke User table se direct actual full name fetch karne wala method
+    public Profile getMyProfile(User user) {
+        Profile profile = repository.findAll().stream()
+                .filter(p -> p.getUser() != null && p.getUser().getId().equals(user.getId()))
+                .findFirst()
+                .orElse(new Profile());
+
+        // Agar Profile mein full_name khali hai, toh User table se direct utha lo
+        if (profile.getFullName() == null || profile.getFullName().trim().isEmpty()) {
+            if (user != null) {
+                profile.setFullName(user.getFullName());
+            }
+        }
+
+        return profile;
     }
 
     public Profile save(Profile profile, Authentication auth) {

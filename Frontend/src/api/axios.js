@@ -1,19 +1,59 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: '/api',
+    baseURL: 'http://localhost:8080/api',
+    headers: {
+        'Content-Type': 'application/json',
+    }
 });
 
-// Interceptor: JWT token ko automatically har request mein daalne ke liye
+// Request Interceptor: Automatically attach the JWT token to every request
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
+        // All possible keys are checked so that the token is not missed
+        const token =
+            localStorage.getItem('token') ||
+            localStorage.getItem('jwtToken') ||
+            localStorage.getItem('accessToken') ||
+            localStorage.getItem('authToken') ||
+            localStorage.getItem('access_token') ||
+            localStorage.getItem('user');
+
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            let cleanToken = token;
+            try {
+                const parsed = JSON.parse(token);
+                if (parsed.token || parsed.accessToken || parsed.jwt) {
+                    cleanToken = parsed.token || parsed.accessToken || parsed.jwt;
+                }
+            } catch (e) {
+                // If it is a normal string token, the error will be ignored
+            }
+
+            config.headers.Authorization = `Bearer ${cleanToken}`;
+        } else {
+            console.warn(`[Axios Warning]: No authentication token found in localStorage for request to ${config.url}`);
         }
+
+        // Ensure content type is set if data is sent and it's not FormData
+        if (!config.headers['Content-Type'] && config.data && !(config.data instanceof FormData)) {
+            config.headers['Content-Type'] = 'application/json';
+        }
+
         return config;
     },
     (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Response Interceptor for debugging 403 / 401 errors
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 403) {
+            console.error("403 Forbidden Error: The token has expired or there is no permission for this route.");
+        }
         return Promise.reject(error);
     }
 );

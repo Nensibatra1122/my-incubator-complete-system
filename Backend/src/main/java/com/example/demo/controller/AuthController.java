@@ -52,18 +52,11 @@ public class AuthController {
                         .findFirst()
                         .orElse("");
 
-                // 3. Match Role
-                if (!userRole.toUpperCase().contains(loginRequest.getRole().toUpperCase())) {
-                    System.err.println("ROLE MISMATCH: Expected " + loginRequest.getRole() + " but got " + userRole);
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Role mismatch!"));
-                }
-
-                // 4. Generate Token
+                // 3. Generate Token directly without matching role
                 String token = jwtUtil.generateToken(loginRequest.getEmail(), userRole);
                 return ResponseEntity.ok(Map.of("token", token, "role", userRole));
             }
         } catch (Exception e) {
-            // ASLI ERROR CONSOLE MEIN DIKHAYEGA
             System.err.println("AUTHENTICATION ERROR: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid email or password!"));

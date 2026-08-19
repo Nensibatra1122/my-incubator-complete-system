@@ -11,12 +11,17 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long notificationId;
 
+    @Column(nullable = true)
+    private String title;
+
     @Column(nullable = false)
     private String message;
 
-    // Optional: Target role for role-based notifications (e.g., MENTOR, STUDENT, ADMIN)
     @Column(name = "target_role")
     private String targetRole;
+
+    @Column(name = "recipient_email")
+    private String recipientEmail;
 
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
@@ -25,7 +30,7 @@ public class Notification {
     private LocalDateTime createdAt;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = true) // Set to true if broadcast notifications don't require a specific user
+    @JoinColumn(name = "user_id", nullable = true)
     private User user;
 
     @PrePersist
@@ -42,6 +47,14 @@ public class Notification {
         this.notificationId = notificationId;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
     public String getMessage() {
         return message;
     }
@@ -56,6 +69,14 @@ public class Notification {
 
     public void setTargetRole(String targetRole) {
         this.targetRole = targetRole;
+    }
+
+    public String getRecipientEmail() {
+        return recipientEmail;
+    }
+
+    public void setRecipientEmail(String recipientEmail) {
+        this.recipientEmail = recipientEmail;
     }
 
     public boolean isRead() {

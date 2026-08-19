@@ -26,6 +26,13 @@ public class FeedbackService {
                 .collect(Collectors.toList());
     }
 
+    // Added method to fetch feedbacks by user email for /my-feedbacks endpoint
+    public List<Feedback> getFeedbacksByEmail(String email) {
+        return repository.findAll().stream()
+                .filter(f -> f.getCreatedByEmail() != null && f.getCreatedByEmail().equals(email))
+                .collect(Collectors.toList());
+    }
+
     public Feedback getFeedbackById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Feedback not found with id: " + id));

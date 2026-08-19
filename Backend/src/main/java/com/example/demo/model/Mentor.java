@@ -25,4 +25,10 @@ public class Mentor {
     public void setEmail(String email) {
         this.email = email;
     }
+
+    public User getUser() {
+        // Agar Mentor table mein User ka relation nahi hai balki direct fields hain,
+        // toh aap yahan null return kar sakte hain ya Controller mein getName() direct use kar sakte hain.
+        return null;
+    }
 }
