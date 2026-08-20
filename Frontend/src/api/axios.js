@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://incubatorsystem2-779054019.us-east-1.elb.amazonaws.com/api',
+    baseURL: '/api',
     headers: {
         'Content-Type': 'application/json',
     }
@@ -10,7 +10,6 @@ const api = axios.create({
 // Request Interceptor: Automatically attach the JWT token to every request
 api.interceptors.request.use(
     (config) => {
-        // All possible keys are checked so that the token is not missed
         const token =
             localStorage.getItem('token') ||
             localStorage.getItem('jwtToken') ||
@@ -26,28 +25,20 @@ api.interceptors.request.use(
                 if (parsed.token || parsed.accessToken || parsed.jwt) {
                     cleanToken = parsed.token || parsed.accessToken || parsed.jwt;
                 }
-            } catch (e) {
-                // If it is a normal string token, the error will be ignored
-            }
+            } catch (e) {}
 
             config.headers.Authorization = `Bearer ${cleanToken}`;
-        } else {
-            console.warn(`[Axios Warning]: No authentication token found in localStorage for request to ${config.url}`);
         }
 
-        // Ensure content type is set if data is sent and it's not FormData
         if (!config.headers['Content-Type'] && config.data && !(config.data instanceof FormData)) {
             config.headers['Content-Type'] = 'application/json';
         }
 
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
-// Response Interceptor for debugging 403 / 401 errors
 api.interceptors.response.use(
     (response) => response,
     (error) => {
